@@ -1,20 +1,20 @@
-{{ if .Values.labs.example3HelmParameterized.enabled -}}
+{{ if .Values.labs.helloWorld.enabled -}}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: example3-helm-parameterized-{{ .Values.tenant.user.name | lower }}
+  name: hello-world-{{ .Values.tenant.user.name | lower }}
   namespace: openshift-gitops
   labels:
-    app: example3-helm-parameterized
+    app: hello-world
     tenant: {{ .Values.tenant.name | lower }}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: tenants
   source:
-    repoURL: {{ .Values.labs.example3HelmParameterized.git.repoURL }}
-    targetRevision: {{ .Values.labs.example3HelmParameterized.git.targetRevision }}
-    path: {{ .Values.labs.example3HelmParameterized.git.path }}
+    repoURL: {{ .Values.labs.helloWorld.git.repoURL }}
+    targetRevision: {{ .Values.labs.helloWorld.git.targetRevision }}
+    path: {{ .Values.labs.helloWorld.git.path }}
     helm:
       values: |
         # Pass tenant context
@@ -26,14 +26,14 @@ spec:
           domain: {{ .Values.deployer.domain }}
           apiUrl: {{ .Values.deployer.apiUrl }}
 
-        # Pass example3-helm-parameterized specific values
-        message: {{ .Values.labs.example3HelmParameterized.message | quote }}
-        replicas: {{ .Values.labs.example3HelmParameterized.replicas }}
-        imageTag: {{ .Values.labs.example3HelmParameterized.imageTag | quote }}
+        # Pass hello-world lab specific values
+        message: {{ .Values.labs.helloWorld.message | quote }}
+        replicas: {{ .Values.labs.helloWorld.replicas }}
+        imageTag: {{ .Values.labs.helloWorld.imageTag | quote }}
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: {{ .Values.labs.example3HelmParameterized.namespace }}
+    namespace: {{ .Values.labs.helloWorld.namespace }}
 
   syncPolicy:
     automated:

@@ -28,7 +28,7 @@
 # Override targetRevision per-example in the catalog when developing on a branch.
 # ---------------------------------------------------------------------------
 default_settings: &git_defaults
-  repoURL: https://github.com/rhpds/ci-template-gitops.git
+  repoURL: https://github.com/rhpds/ocp4-getting-started-automation.git
   targetRevision: main
 
 # ---------------------------------------------------------------------------
@@ -86,10 +86,10 @@ example1InlineResource:
   namespace: example1-USERNAME   # MUST be overridden in catalog
 
 # ---------------------------------------------------------------------------
-# labs.example3HelmParameterized — parameterized Helm sub-chart example.
+# labs.helloWorld — parameterized Helm sub-chart example.
 # Same pattern as example2HelmBasic, but every meaningful value is passed from
 # the catalog down through the bootstrap chart into the child chart
-# (tenant/labs/example3-helm-parameterized/).
+# (tenant/labs/hello-world/).
 #
 # namespace: intentionally has no safe default. "NAMESPACE-MUST-BE-SET-BY-CATALOG"
 #            causes a loud ArgoCD failure if omitted — better than a silent
@@ -101,11 +101,11 @@ example1InlineResource:
 # imageTag: container image tag. Override to pin a specific version.
 # ---------------------------------------------------------------------------
 labs:
-  example3HelmParameterized:
+  helloWorld:
     enabled: false
     namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG
     git:
-      path: tenant/labs/example3-helm-parameterized
+      path: tenant/labs/hello-world
       <<: *git_defaults
     message: "Hello from DEFAULT values - edit catalog to override me!"
     replicas: 1
