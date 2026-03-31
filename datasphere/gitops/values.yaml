@@ -9,7 +9,7 @@ theme: earth
 # ── Images ───────────────────────────────────────────────────────────────────
 images:
   # Pre-built UI image — pulled directly, never built in the workshop
-  ui: quay.io/nstephan/datasphere-ui:1.0.1-05
+  ui: quay.io/nstephan/datasphere-ui:1.0.2
   # API image — built from source via S2I in Lab 6, then referenced here
   api: quay.io/nstephan/datasphere-api:1.0.0
 
