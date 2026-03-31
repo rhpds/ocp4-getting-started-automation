@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: datasphere-api
+  labels:
+    app: datasphere
+    component: api
+spec:
+  selector:
+    app: datasphere
+    component: api
+  ports:
+    - port: 8080
+      targetPort: 8080

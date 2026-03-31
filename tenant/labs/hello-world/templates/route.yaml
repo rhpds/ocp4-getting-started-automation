@@ -1,15 +1,15 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: example3-helm-parameterized
+  name: hello-world
   labels:
-    app: example3-helm-parameterized
+    app: hello-world
     tenant: {{ .Values.tenant.name }}
 spec:
-  host: example3-helm-parameterized-{{ .Values.tenant.name }}.{{ .Values.deployer.domain }}
+  host: hello-world-{{ .Values.tenant.name }}.{{ .Values.deployer.domain }}
   to:
     kind: Service
-    name: example3-helm-parameterized
+    name: hello-world
     weight: 100
   port:
     targetPort: http

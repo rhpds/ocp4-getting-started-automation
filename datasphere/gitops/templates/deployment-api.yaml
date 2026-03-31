@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datasphere-api
+  labels:
+    app: datasphere
+    component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      app: datasphere
+      component: api
+  template:
+    metadata:
+      labels:
+        app: datasphere
+        component: api
+      annotations:
+        # Checksum of the ConfigMap — changing values.yaml theme triggers
+        # a rolling restart automatically on helm upgrade / Argo CD sync.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: api
+          image: {{ .Values.images.api }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATASPHERE_CONFIG_PATH
+              value: /etc/datasphere/config.json
+          volumeMounts:
+            - name: theme-config
+              mountPath: /etc/datasphere
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: theme-config
+          configMap:
+            name: datasphere-config

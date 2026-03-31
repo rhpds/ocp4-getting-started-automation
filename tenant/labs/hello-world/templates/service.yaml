@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: example3-helm-parameterized
+  name: hello-world
   labels:
-    app: example3-helm-parameterized
+    app: hello-world
     tenant: {{ .Values.tenant.name }}
 spec:
   ports:
@@ -12,5 +12,5 @@ spec:
     protocol: TCP
     name: http
   selector:
-    app: example3-helm-parameterized
+    app: hello-world
   type: ClusterIP
