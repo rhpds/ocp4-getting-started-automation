@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datasphere-ui
+  labels:
+    app: datasphere
+    component: ui
+spec:
+  replicas: {{ .Values.ui.replicas }}
+  selector:
+    matchLabels:
+      app: datasphere
+      component: ui
+  template:
+    metadata:
+      labels:
+        app: datasphere
+        component: ui
+    spec:
+      containers:
+        - name: ui
+          image: {{ .Values.images.ui }}
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
