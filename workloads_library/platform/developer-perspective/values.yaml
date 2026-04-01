@@ -1,0 +1,12 @@
+# workloads_library/platform/developer-perspective/values.yaml
+#
+# Enables the Developer Perspective in the OpenShift web console.
+# Uses server-side apply so only spec.customization.perspectives is managed;
+# all other Console CR fields are left untouched.
+#
+# To also hide the Administrator perspective for student users, set:
+#   adminPerspective: Disabled
+# (Not recommended for this lab — instructors need admin access.)
+
+developerPerspective: Enabled
+adminPerspective: Enabled

@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gitea-content-init
+  namespace: {{ .Values.gitea.namespace }}
+  annotations:
+    # Re-run via: oc create job gitea-content-init-manual --from=job/gitea-content-init -n gitea
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      serviceAccountName: gitea-content-init
+      restartPolicy: OnFailure
+      volumes:
+        - name: creds
+          emptyDir: {}
+        - name: scripts
+          configMap:
+            name: gitea-content-init-scripts
+            defaultMode: 0755
+
+      initContainers:
+        - name: read-gitea-cr
+          image: registry.redhat.io/ubi9/ubi-minimal:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              microdnf install -y python3-minimal curl --nodocs --setopt=install_weak_deps=0 -q
+              exec /bin/bash /scripts/read-gitea-cr.sh
+          env:
+            - name: GITEA_NAMESPACE
+              value: {{ .Values.gitea.namespace | quote }}
+            - name: GITEA_CR_NAME
+              value: {{ .Values.gitea.crName | quote }}
+          volumeMounts:
+            - name: creds
+              mountPath: /creds
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+
+      containers:
+        - name: init-repos
+          image: registry.redhat.io/ubi9/ubi-minimal:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              microdnf install -y git curl --nodocs --setopt=install_weak_deps=0 -q
+              exec /bin/bash /scripts/init-repos.sh
+          env:
+            - name: AUTOMATION_REPO_URL
+              value: {{ .Values.automationRepo.url | quote }}
+            - name: AUTOMATION_REPO_REVISION
+              value: {{ .Values.automationRepo.revision | quote }}
+          volumeMounts:
+            - name: creds
+              mountPath: /creds
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }

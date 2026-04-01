@@ -1,0 +1,43 @@
+{{ if .Values.giteaContentInit.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitea-content-init
+  namespace: openshift-gitops
+  labels:
+    app: gitea-content-init
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: {{ .Values.giteaContentInit.git.repoURL }}
+    targetRevision: {{ .Values.giteaContentInit.git.targetRevision }}
+    path: {{ .Values.giteaContentInit.git.path }}
+    helm:
+      values: |
+        deployer:
+          domain: {{ .Values.deployer.domain | quote }}
+        automationRepo:
+          url: {{ .Values.giteaContentInit.automationRepo.url | quote }}
+          revision: {{ .Values.giteaContentInit.automationRepo.revision | quote }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.giteaContentInit.gitea.namespace | default "gitea" | quote }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+{{- end }}

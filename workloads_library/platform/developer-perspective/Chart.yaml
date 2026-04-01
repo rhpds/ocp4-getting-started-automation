@@ -1,0 +1,8 @@
+apiVersion: v2
+name: developer-perspective
+description: >
+  Ensures the OpenShift Developer Perspective is enabled in the web console.
+  Applies a partial Console CR patch via server-side apply so only the
+  perspectives field is managed — all other Console customizations are left intact.
+type: application
+version: 0.1.0

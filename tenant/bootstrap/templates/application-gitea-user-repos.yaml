@@ -1,0 +1,43 @@
+{{ if .Values.gitea.userRepos.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitea-user-repos-{{ .Values.tenant.user.name | lower }}
+  namespace: openshift-gitops
+  labels:
+    app: gitea-user-repos
+    tenant: {{ .Values.tenant.name | lower }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: tenants
+  source:
+    repoURL: {{ .Values.gitea.userRepos.git.repoURL }}
+    targetRevision: {{ .Values.gitea.userRepos.git.targetRevision }}
+    path: {{ .Values.gitea.userRepos.git.path }}
+    helm:
+      values: |
+        gitea:
+          namespace: {{ .Values.gitea.namespace | quote }}
+          crName: {{ .Values.gitea.crName | quote }}
+        user:
+          name: {{ .Values.tenant.user.name | quote }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.gitea.namespace | quote }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+{{- end }}

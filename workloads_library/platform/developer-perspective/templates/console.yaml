@@ -1,0 +1,17 @@
+apiVersion: operator.openshift.io/v1
+kind: Console
+metadata:
+  name: cluster
+  annotations:
+    # Server-side apply: ArgoCD only manages the perspectives field.
+    # All other Console CR fields (auth, plugins, routes, etc.) are left intact.
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  customization:
+    perspectives:
+      - id: dev
+        visibility:
+          state: {{ .Values.developerPerspective }}
+      - id: admin
+        visibility:
+          state: {{ .Values.adminPerspective }}

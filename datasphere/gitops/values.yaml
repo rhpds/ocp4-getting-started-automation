@@ -1,17 +1,13 @@
 # ── Theme ────────────────────────────────────────────────────────────────────
-# Controls the DataSphere map theme.
-# Valid values: "earth" | "mars"
-#
-# Lab 10 (GitOps): Change this value to "mars" and commit to trigger
-# Argo CD to sync and roll out the Mars theme automatically.
+# Controls the DataSphere map theme. Currently only "earth" is supported.
 theme: earth
 
 # ── Images ───────────────────────────────────────────────────────────────────
 images:
   # Pre-built UI image — pulled directly, never built in the workshop
-  ui: quay.io/nstephan/datasphere-ui:1.0.2
-  # API image — built from source via S2I in Lab 6, then referenced here
-  api: quay.io/nstephan/datasphere-api:1.0.0
+  ui: quay.io/rhpds/datasphere-ui:1.1.0
+  # API image — built from source via S2I in Lab 2, then referenced here
+  api: quay.io/rhpds/datasphere-api:1.1.0
 
 # ── Replica counts ───────────────────────────────────────────────────────────
 api:

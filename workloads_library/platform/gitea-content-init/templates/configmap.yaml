@@ -1,0 +1,132 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-content-init-scripts
+  namespace: {{ .Values.gitea.namespace }}
+data:
+  read-gitea-cr.sh: |
+    #!/bin/bash
+    # Reads admin credentials and route from the Gitea CR via the k8s API.
+    # Writes them to /creds/env so the main container can source them.
+    set -euo pipefail
+
+    TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    CACERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+    CR=$(curl -sf \
+      --cacert "$CACERT" \
+      -H "Authorization: Bearer $TOKEN" \
+      "https://kubernetes.default.svc/apis/pfe.rhpds.com/v1/namespaces/${GITEA_NAMESPACE}/giteas/${GITEA_CR_NAME}")
+
+    GITEA_ADMIN_USER=$(echo "$CR" | python3 -c \
+      "import sys,json; print(json.load(sys.stdin)['spec']['giteaAdminUser'])")
+    GITEA_ADMIN_PASS=$(echo "$CR" | python3 -c \
+      "import sys,json; print(json.load(sys.stdin)['status']['adminPassword'])")
+    GITEA_ROUTE=$(echo "$CR" | python3 -c \
+      "import sys,json; print(json.load(sys.stdin)['status']['giteaRoute'])")
+
+    cat > /creds/env <<EOF
+    export GITEA_ADMIN_USER="${GITEA_ADMIN_USER}"
+    export GITEA_ADMIN_PASS="${GITEA_ADMIN_PASS}"
+    export GITEA_ROUTE="${GITEA_ROUTE}"
+    EOF
+    echo "Gitea route: ${GITEA_ROUTE}, admin user: ${GITEA_ADMIN_USER}"
+
+  init-repos.sh: |
+    #!/bin/bash
+    # Seeds Gitea with DataSphere repos and pushes the Helm chart to the package registry.
+    # All operations are idempotent — safe to run on an already-provisioned cluster.
+    set -euo pipefail
+
+    source /creds/env
+
+    GIT_BASE="${GITEA_ROUTE#https://}"
+
+    # ---------------------------------------------------------------------------
+    # Clone the automation repo (shallow — we only need current state)
+    # ---------------------------------------------------------------------------
+    echo "Cloning automation repo..."
+    git clone --depth=1 --branch "${AUTOMATION_REPO_REVISION}" \
+      "${AUTOMATION_REPO_URL}" /tmp/automation
+
+    git config --global user.email "admin@gitea.local"
+    git config --global user.name "Gitea Admin"
+
+    # ---------------------------------------------------------------------------
+    # Create each repo from its subdirectory
+    # ---------------------------------------------------------------------------
+    declare -A REPOS
+    {{- range .Values.repositories }}
+    REPOS["{{ .name }}"]="{{ .sourceSubdir }}"
+    {{- end }}
+
+    for REPO_NAME in "${!REPOS[@]}"; do
+      SOURCE_SUBDIR="${REPOS[$REPO_NAME]}"
+
+      # Check if repo already exists
+      HTTP_STATUS=$(curl -so /dev/null -w "%{http_code}" \
+        -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
+        "${GITEA_ROUTE}/api/v1/repos/${GITEA_ADMIN_USER}/${REPO_NAME}")
+
+      if [ "${HTTP_STATUS}" = "200" ]; then
+        echo "Repo ${REPO_NAME} already exists — skipping"
+        continue
+      fi
+
+      echo "Creating repo ${REPO_NAME} from ${SOURCE_SUBDIR}..."
+
+      # Create empty repo in Gitea
+      curl -sf -X POST \
+        -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
+        -H "Content-Type: application/json" \
+        -d "{\"name\":\"${REPO_NAME}\",\"private\":false,\"auto_init\":false,\"default_branch\":\"main\"}" \
+        "${GITEA_ROUTE}/api/v1/user/repos"
+
+      # Build a fresh git repo from the subdirectory
+      WORKDIR=$(mktemp -d)
+      cp -r /tmp/automation/${SOURCE_SUBDIR}/. "${WORKDIR}/"
+      cd "${WORKDIR}"
+      git init -b main
+      git add .
+      git commit -m "Initial commit"
+      git push \
+        "http://${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}@${GIT_BASE}/${GITEA_ADMIN_USER}/${REPO_NAME}.git" \
+        main
+      cd /
+      rm -rf "${WORKDIR}"
+      echo "Created ${REPO_NAME}"
+    done
+
+    # ---------------------------------------------------------------------------
+    # Push the Helm chart to Gitea's package registry
+    # ---------------------------------------------------------------------------
+    CHART_DIR="/tmp/automation/{{ .Values.helmChart.sourceSubdir }}"
+    CHART_NAME=$(grep '^name:' "${CHART_DIR}/Chart.yaml" | awk '{print $2}')
+    CHART_VERSION=$(grep '^version:' "${CHART_DIR}/Chart.yaml" | awk '{print $2}')
+    CHART_PKG="/tmp/${CHART_NAME}-${CHART_VERSION}.tgz"
+
+    echo "Packaging Helm chart ${CHART_NAME}-${CHART_VERSION}..."
+
+    # Check if chart version is already published
+    HTTP_STATUS=$(curl -so /dev/null -w "%{http_code}" \
+      -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
+      "${GITEA_ROUTE}/api/packages/${GITEA_ADMIN_USER}/helm/api/charts/${CHART_NAME}/${CHART_VERSION}")
+
+    if [ "${HTTP_STATUS}" = "200" ]; then
+      echo "Chart ${CHART_NAME}-${CHART_VERSION} already in registry — skipping"
+    else
+      # Package: helm expects a dir named after the chart at the top level of the tarball
+      CHART_STAGE=$(mktemp -d)
+      cp -r "${CHART_DIR}" "${CHART_STAGE}/${CHART_NAME}"
+      tar -czf "${CHART_PKG}" -C "${CHART_STAGE}" "${CHART_NAME}"
+      rm -rf "${CHART_STAGE}"
+
+      curl -sf \
+        -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
+        -F "chart=@${CHART_PKG}" \
+        "${GITEA_ROUTE}/api/packages/${GITEA_ADMIN_USER}/helm/api/charts"
+      echo "Chart ${CHART_NAME}-${CHART_VERSION} pushed to Gitea package registry"
+    fi
+
+    echo "Done."

@@ -1,0 +1,37 @@
+{{ if .Values.developerPerspective.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: developer-perspective
+  namespace: openshift-gitops
+  labels:
+    app: developer-perspective
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: {{ .Values.developerPerspective.git.repoURL }}
+    targetRevision: {{ .Values.developerPerspective.git.targetRevision }}
+    path: {{ .Values.developerPerspective.git.path }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-gitops
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+{{- end }}

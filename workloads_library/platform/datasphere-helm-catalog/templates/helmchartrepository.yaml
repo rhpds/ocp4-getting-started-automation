@@ -1,0 +1,9 @@
+apiVersion: helm.openshift.io/v1beta1
+kind: HelmChartRepository
+metadata:
+  name: datasphere-lab
+spec:
+  name: {{ .Values.displayName | quote }}
+  description: {{ .Values.description | quote }}
+  connectionConfig:
+    url: {{ printf "https://gitea.%s/api/packages/%s/helm" .Values.deployer.domain .Values.gitea.adminUser | quote }}

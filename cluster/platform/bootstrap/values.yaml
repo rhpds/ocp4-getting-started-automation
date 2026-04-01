@@ -147,3 +147,41 @@ webterminal:
   git:
     path: workloads_library/platform/webterminal
     <<: *git_defaults
+
+# Developer Perspective — ensures the Developer Perspective is enabled in the
+# OpenShift web console. Uses server-side apply on Console/cluster so only the
+# perspectives field is managed. Enable this for any lab that uses the Developer
+# Perspective (topology view, +Add, Helm Charts, etc.).
+developerPerspective:
+  enabled: false
+  git:
+    path: workloads_library/platform/developer-perspective
+    <<: *git_defaults
+
+# Gitea Content Init — one-shot Job that seeds the cluster Gitea with DataSphere
+# source repos and pushes the Helm chart to Gitea's package registry.
+# Requires: Gitea deployed by the cluster CI (ocp4_workload_gitea_operator).
+# Enable alongside datasphereHelmCatalog.
+giteaContentInit:
+  enabled: false
+  gitea:
+    namespace: gitea
+    crName: gitea
+  automationRepo:
+    url: https://github.com/rhpds/ocp4-getting-started-automation.git
+    revision: main
+  git:
+    path: workloads_library/platform/gitea-content-init
+    <<: *git_defaults
+
+# DataSphere Helm Catalog — registers the DataSphere Helm chart in the OpenShift
+# Developer Catalog via a HelmChartRepository pointing at Gitea's package registry.
+# Requires: giteaContentInit has run and pushed the chart.
+datasphereHelmCatalog:
+  enabled: false
+  gitea:
+    namespace: gitea
+    crName: gitea
+  git:
+    path: workloads_library/platform/datasphere-helm-catalog
+    <<: *git_defaults

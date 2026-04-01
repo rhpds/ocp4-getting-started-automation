@@ -1,0 +1,11 @@
+apiVersion: v2
+name: datasphere-helm-catalog
+description: >
+  Registers the DataSphere Helm chart in the OpenShift Developer Catalog via a
+  cluster-scoped HelmChartRepository pointing at the cluster's Gitea instance.
+  A one-shot Job packages and pushes datasphere/gitops from the automation repo
+  into Gitea's Helm package registry so the chart is available before students
+  access the cluster.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

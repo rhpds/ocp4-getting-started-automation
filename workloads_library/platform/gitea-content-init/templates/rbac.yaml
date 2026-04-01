@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gitea-content-init
+  namespace: {{ .Values.gitea.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gitea-content-init
+  namespace: {{ .Values.gitea.namespace }}
+rules:
+  - apiGroups: ["pfe.rhpds.com"]
+    resources: ["giteas"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gitea-content-init
+  namespace: {{ .Values.gitea.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: gitea-content-init
+    namespace: {{ .Values.gitea.namespace }}
+roleRef:
+  kind: Role
+  name: gitea-content-init
+  apiGroup: rbac.authorization.k8s.io
