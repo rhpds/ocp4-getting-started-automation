@@ -1,23 +1,20 @@
 # workloads_library/platform/datasphere-helm-catalog/values.yaml
 #
-# Registers the DataSphere Helm chart in the OpenShift Developer Catalog via
-# a cluster-scoped HelmChartRepository.
+# Registers the DataSphere Helm chart in the OpenShift Developer Catalog via a
+# cluster-scoped HelmChartRepository pointing at the cluster Gitea's package registry.
 #
-# The chart must be published to the configured URL before this workload is enabled.
-# Recommended: push as OCI artifact to quay.io alongside the container images.
-#   helm package datasphere/gitops
-#   helm push datasphere-1.x.x.tgz oci://quay.io/rhpds
-#
-# Then set:
-#   repoURL: oci://quay.io/rhpds
-#
-# For a standard HTTP Helm repo (e.g. GitHub Pages):
-#   repoURL: https://rhpds.github.io/ocp4-getting-started-automation
+# The chart must first be pushed to Gitea by the gitea-content-init Job.
+# Enable both giteaContentInit and datasphereHelmCatalog together in the catalog.
 #
 # See: https://docs.openshift.com/container-platform/latest/applications/helm_charts/ocp-helm-openshift-catalog.html
 
-# URL of the Helm chart repository. Override in the catalog via platformValues.
-repoURL: oci://quay.io/rhpds
+# deployer — injected automatically from the cluster. Do not set in catalog.
+deployer:
+  domain: cluster.example.com
+
+# Gitea admin user — must match ocp4_workload_gitea_operator_admin_user in cluster CI.
+gitea:
+  adminUser: gitea-admin
 
 # Display name shown in the OpenShift Developer Catalog.
 displayName: "DataSphere Lab Charts"

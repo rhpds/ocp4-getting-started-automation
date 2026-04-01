@@ -59,6 +59,21 @@ tenant:
 # theme: "earth". Leave as "earth" for the pre-deployed instance.
 # git:   only override targetRevision when testing on a feature branch.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# gitea — per-user Gitea repo seeding.
+# Creates fresh copies of DataSphere repos in the student's Gitea account.
+# Requires gitea-content-init to have run at the cluster level first.
+# ---------------------------------------------------------------------------
+gitea:
+  namespace: gitea
+  crName: gitea
+  userRepos:
+    enabled: false
+    git:
+      path: workloads_library/tenant/gitea-user-repos
+      repoURL: https://github.com/rhpds/ocp4-getting-started-automation.git
+      targetRevision: main
+
 labs:
   datasphere:
     enabled: false

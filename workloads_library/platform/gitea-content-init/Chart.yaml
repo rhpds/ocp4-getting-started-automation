@@ -1,0 +1,9 @@
+apiVersion: v2
+name: gitea-content-init
+description: >
+  One-shot Job that seeds the cluster's Gitea instance with DataSphere source
+  repositories and pushes the DataSphere Helm chart to Gitea's package registry.
+  Runs once at cluster provisioning time. Safe to re-run — all steps are idempotent.
+  Requires: Gitea deployed by ocp4_workload_gitea_operator (cluster CI).
+type: application
+version: 0.1.0

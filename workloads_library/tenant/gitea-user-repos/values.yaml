@@ -1,0 +1,19 @@
+# workloads_library/tenant/gitea-user-repos/values.yaml
+
+# Gitea instance coordinates — must match cluster CI config.
+gitea:
+  namespace: gitea
+  crName: gitea
+
+# The student's Gitea username and password.
+# Set from catalog via tenant.user.name / tenant.user.password.
+user:
+  name: ""
+  password: ""
+
+# Repos to create in the student's account.
+# Each must already exist under the Gitea admin user (seeded by gitea-content-init).
+repositories:
+  - datasphere-api
+  - datasphere-ui
+  - datasphere-gitops

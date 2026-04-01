@@ -6,4 +6,4 @@ spec:
   name: {{ .Values.displayName | quote }}
   description: {{ .Values.description | quote }}
   connectionConfig:
-    url: {{ .Values.repoURL | quote }}
+    url: {{ printf "https://gitea.%s/api/packages/%s/helm" .Values.deployer.domain .Values.gitea.adminUser | quote }}

@@ -158,16 +158,30 @@ developerPerspective:
     path: workloads_library/platform/developer-perspective
     <<: *git_defaults
 
-# DataSphere Helm Catalog — registers the DataSphere Helm chart in the OpenShift
-# Developer Catalog. Packages datasphere/gitops from the automation repo and pushes
-# it to the cluster's Gitea Helm package registry. Students can then deploy DataSphere
-# via "Add → Helm Charts" in the Developer Perspective — no CLI required.
+# Gitea Content Init — one-shot Job that seeds the cluster Gitea with DataSphere
+# source repos and pushes the Helm chart to Gitea's package registry.
 # Requires: Gitea deployed by the cluster CI (ocp4_workload_gitea_operator).
+# Enable alongside datasphereHelmCatalog.
+giteaContentInit:
+  enabled: false
+  gitea:
+    namespace: gitea
+    crName: gitea
+  automationRepo:
+    url: https://github.com/rhpds/ocp4-getting-started-automation.git
+    revision: main
+  git:
+    path: workloads_library/platform/gitea-content-init
+    <<: *git_defaults
+
+# DataSphere Helm Catalog — registers the DataSphere Helm chart in the OpenShift
+# Developer Catalog via a HelmChartRepository pointing at Gitea's package registry.
+# Requires: giteaContentInit has run and pushed the chart.
 datasphereHelmCatalog:
   enabled: false
-  giteaOwner: admin
-  giteaAdminSecretName: gitea-admin-secret
-  automationRepoUrl: https://github.com/rhpds/ocp4-getting-started-automation.git
+  gitea:
+    namespace: gitea
+    crName: gitea
   git:
     path: workloads_library/platform/datasphere-helm-catalog
     <<: *git_defaults

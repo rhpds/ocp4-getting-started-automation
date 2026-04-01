@@ -1,0 +1,33 @@
+# workloads_library/platform/gitea-content-init/values.yaml
+#
+# Seeds the cluster Gitea with DataSphere repos and Helm chart.
+# All values can be overridden via platformValues in the catalog.
+
+# deployer — injected automatically from the cluster. Do not set in catalog.
+deployer:
+  domain: cluster.example.com
+
+# Gitea instance coordinates — must match ocp4_workload_gitea_operator config.
+gitea:
+  namespace: gitea
+  crName: gitea
+
+# Source repository to clone from. All datasphere components live here.
+automationRepo:
+  url: https://github.com/rhpds/ocp4-getting-started-automation.git
+  revision: main
+
+# Repositories to create under the Gitea admin user.
+# name: repo name in Gitea; sourceSubdir: path within automationRepo to use as root.
+repositories:
+  - name: datasphere-api
+    sourceSubdir: datasphere/api
+  - name: datasphere-ui
+    sourceSubdir: datasphere/ui
+  - name: datasphere-gitops
+    sourceSubdir: datasphere/gitops
+
+# Helm chart to push to Gitea's package registry.
+# The HelmChartRepository CR in datasphere-helm-catalog points at this registry.
+helmChart:
+  sourceSubdir: datasphere/gitops

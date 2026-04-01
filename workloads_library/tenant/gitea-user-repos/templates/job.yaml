@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gitea-user-repos-{{ .Values.user.name }}
+  namespace: {{ .Values.gitea.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 300
+  template:
+    spec:
+      serviceAccountName: gitea-user-repos-{{ .Values.user.name }}
+      restartPolicy: OnFailure
+      volumes:
+        - name: creds
+          emptyDir: {}
+        - name: scripts
+          configMap:
+            name: gitea-user-repos-{{ .Values.user.name }}-scripts
+            defaultMode: 0755
+
+      initContainers:
+        - name: read-gitea-cr
+          image: registry.redhat.io/ubi9/ubi-minimal:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              microdnf install -y python3-minimal curl --nodocs --setopt=install_weak_deps=0 -q
+              exec /bin/bash /scripts/read-gitea-cr.sh
+          env:
+            - name: GITEA_NAMESPACE
+              value: {{ .Values.gitea.namespace | quote }}
+            - name: GITEA_CR_NAME
+              value: {{ .Values.gitea.crName | quote }}
+          volumeMounts:
+            - name: creds
+              mountPath: /creds
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+
+      containers:
+        - name: seed-user-repos
+          image: registry.redhat.io/ubi9/ubi-minimal:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              microdnf install -y git curl --nodocs --setopt=install_weak_deps=0 -q
+              exec /bin/bash /scripts/seed-user-repos.sh
+          env:
+            - name: GITEA_USER
+              value: {{ .Values.user.name | quote }}
+            - name: REPOS
+              value: {{ .Values.repositories | join " " | quote }}
+          volumeMounts:
+            - name: creds
+              mountPath: /creds
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }

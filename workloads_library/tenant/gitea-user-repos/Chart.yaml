@@ -1,0 +1,9 @@
+apiVersion: v2
+name: gitea-user-repos
+description: >
+  Per-user Job that creates fresh copies of the DataSphere repos in a student's
+  Gitea account. Clones from the admin-owned repos seeded by gitea-content-init
+  and pushes clean single-commit repos to the student's account.
+  Runs once per tenant during provisioning. Safe to re-run — idempotent.
+type: application
+version: 0.1.0
