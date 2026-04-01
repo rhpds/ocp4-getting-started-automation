@@ -24,5 +24,5 @@ oc new-app python~https://github.com/rhpds/ocp4-getting-started-automation \
 
 | Component | Image |
 |-----------|-------|
-| UI | `quay.io/nstephan/datasphere-ui:1.0.2` |
-| API | `quay.io/nstephan/datasphere-api:1.0.0` |
+| UI | `quay.io/rhpds/datasphere-ui:1.1.0` |
+| API | `quay.io/rhpds/datasphere-api:1.1.0` |
