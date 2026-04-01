@@ -15,18 +15,11 @@ RUN npm run build
 # UBI9 nginx 1.22 — consistent base for vulnerability scanning
 FROM registry.access.redhat.com/ubi9/nginx-122:latest
 
-# Copy built assets into the UBI default web root
-COPY --from=build /opt/app-root/src/dist /opt/app-root/src
-
-# nginx.conf contains location blocks for the UBI default server block.
-# __NAMESERVER__ is substituted at runtime by entrypoint.sh.
-COPY nginx.conf /opt/app-root/etc/nginx.default.d/datasphere.conf
-
-# entrypoint.sh injects the cluster DNS resolver and starts nginx
-# The script must be committed with execute permissions (chmod +x before git add)
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+# Copy built assets and custom nginx config
+COPY --from=build /opt/app-root/src/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/datasphere.conf
 
 # UBI nginx runs as uid 1001 — no chmod hacks needed
 EXPOSE 8080
 
-CMD ["/usr/local/bin/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]

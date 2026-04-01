@@ -1,0 +1,75 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: datasphere-api-pipeline
+spec:
+  params:
+    - name: APP_NAME
+      type: string
+      default: datasphere-api
+    - name: APP_GIT_URL
+      type: string
+      description: Gitea URL for the datasphere-api repository
+      # This default is overridden at runtime with the student's Gitea URL
+      default: https://gitea.apps.cluster.example.com/userX/datasphere-api.git
+    - name: APP_GIT_REVISION
+      type: string
+      default: main
+    - name: IMAGE
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/datasphere-api:latest
+
+  workspaces:
+    - name: source
+
+  tasks:
+    # ── 1. Clone source from Gitea ─────────────────────────────────────────
+    - name: git-clone
+      taskRef:
+        kind: ClusterTask
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.APP_GIT_URL)
+        - name: revision
+          value: $(params.APP_GIT_REVISION)
+        - name: deleteExisting
+          value: 'true'
+      workspaces:
+        - name: output
+          workspace: source
+
+    # ── 2. Build container image from Dockerfile using Buildah ────────────
+    - name: build-image
+      taskRef:
+        kind: ClusterTask
+        name: buildah
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE)
+        - name: DOCKERFILE
+          value: ./Dockerfile
+        - name: CONTEXT
+          value: .
+        - name: STORAGE_DRIVER
+          value: vfs
+        - name: TLSVERIFY
+          value: 'false'
+        - name: FORMAT
+          value: oci
+      runAfter:
+        - git-clone
+      workspaces:
+        - name: source
+          workspace: source
+
+    # ── 3. Roll out the new image ──────────────────────────────────────────
+    - name: deploy
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+      params:
+        - name: SCRIPT
+          value: oc rollout restart deployment/$(params.APP_NAME)
+      runAfter:
+        - build-image

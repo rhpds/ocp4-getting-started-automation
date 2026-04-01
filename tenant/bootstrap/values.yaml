@@ -7,13 +7,6 @@
 # injects deployer.* from the live cluster automatically. Everything else here
 # is controlled via ocp4_workload_gitops_bootstrap_helm_values in the catalog.
 #
-# THREE EXAMPLE PATTERNS (all disabled by default):
-#   Inline manifests       — raw K8s resources rendered directly by this chart; no sub-chart
-#   Basic Helm sub-chart   — bootstrap spawns a child ArgoCD Application pointing at a chart
-#                            in this repo (tenant/example2-helm-basic/)
-#   Parameterized sub-chart — same as above, but every meaningful value is driven by the catalog
-#                            (tenant/labs/example3-helm-parameterized/)
-#
 # MINIMUM CATALOG BLOCK:
 #   ocp4_workload_gitops_bootstrap_helm_values:
 #     tenant:
@@ -21,11 +14,11 @@
 #       user:
 #         name: "{{ ocp4_workload_tenant_keycloak_username }}"
 #
-# See tenant/START_HERE.md for full catalog snippets for each example.
+# See tenant/START_HERE.md for the full catalog snippet.
 
 # ---------------------------------------------------------------------------
-# Git defaults — inherited by all examples via YAML anchor.
-# Override targetRevision per-example in the catalog when developing on a branch.
+# Git defaults — inherited by all labs via YAML anchor.
+# Override targetRevision per-lab in the catalog when developing on a branch.
 # ---------------------------------------------------------------------------
 default_settings: &git_defaults
   repoURL: https://github.com/rhpds/ocp4-getting-started-automation.git
@@ -54,59 +47,26 @@ tenant:
     name: USERNAME
 
 # ---------------------------------------------------------------------------
-# example2HelmBasic — basic Helm sub-chart example.
-# The bootstrap chart creates an ArgoCD Application pointing at
-# tenant/example2-helm-basic/. ArgoCD then deploys that chart independently.
+# labs.datasphere — pre-deploys the full 2-tier DataSphere app so students
+# can see the finished product at the start of the lab.
 #
-# namespace: must already exist before ArgoCD syncs. Create it with
-#            ocp4_workload_tenant_namespace (suffix: example2-lab) before
-#            ocp4_workload_gitops_bootstrap runs.
+# Deploys to the {user}-datasphere namespace. The student's build namespaces
+# ({user}-lab and {user}-lab-helm) are left empty — students populate them
+# during the lab exercises.
 #
-# git: only override targetRevision when testing on a feature branch.
-#      repoURL and path have correct defaults here.
-# ---------------------------------------------------------------------------
-example2HelmBasic:
-  enabled: false
-  namespace: example2-USERNAME   # MUST be overridden in catalog
-  git:
-    path: tenant/example2-helm-basic
-    <<: *git_defaults
-
-# ---------------------------------------------------------------------------
-# example1InlineResource — inline manifests example.
-# Raw Deployment, Service, and Route rendered directly by this bootstrap chart.
-# No sub-chart and no child ArgoCD Application — resources are part of bootstrap-tenant-<GUID>.
-#
-# namespace: MUST be set explicitly. Without it, ArgoCD falls back to the
-#            Application's destination namespace, which is not a tenant namespace.
-#            Pre-create with ocp4_workload_tenant_namespace (suffix: example1-lab).
-# ---------------------------------------------------------------------------
-example1InlineResource:
-  enabled: false
-  namespace: example1-USERNAME   # MUST be overridden in catalog
-
-# ---------------------------------------------------------------------------
-# labs.helloWorld — parameterized Helm sub-chart example.
-# Same pattern as example2HelmBasic, but every meaningful value is passed from
-# the catalog down through the bootstrap chart into the child chart
-# (tenant/labs/hello-world/).
-#
-# namespace: intentionally has no safe default. "NAMESPACE-MUST-BE-SET-BY-CATALOG"
-#            causes a loud ArgoCD failure if omitted — better than a silent
-#            deploy to the wrong namespace.
-#
-# message:  shown on the app's web page. Supports Jinja2 from the catalog:
-#             message: "Hello, {{ ocp4_workload_tenant_keycloak_username }}!"
-# replicas: number of pod replicas.
-# imageTag: container image tag. Override to pin a specific version.
+# namespace: must already exist (ocp4_workload_tenant_namespace, suffix: datasphere).
+# images: override to pin specific versions. Defaults match the stable release.
+# theme: "earth". Leave as "earth" for the pre-deployed instance.
+# git:   only override targetRevision when testing on a feature branch.
 # ---------------------------------------------------------------------------
 labs:
-  helloWorld:
+  datasphere:
     enabled: false
     namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG
     git:
-      path: tenant/labs/hello-world
+      path: datasphere/gitops
       <<: *git_defaults
-    message: "Hello from DEFAULT values - edit catalog to override me!"
-    replicas: 1
-    imageTag: "latest"
+    images:
+      ui: quay.io/rhpds/datasphere-ui:1.1.0
+      api: quay.io/rhpds/datasphere-api:1.1.0
+    theme: earth

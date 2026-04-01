@@ -1,0 +1,43 @@
+{{ if .Values.labs.datasphere.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: datasphere-{{ .Values.tenant.user.name | lower }}
+  namespace: openshift-gitops
+  labels:
+    app: datasphere
+    tenant: {{ .Values.tenant.name | lower }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: tenants
+  source:
+    repoURL: {{ .Values.labs.datasphere.git.repoURL }}
+    targetRevision: {{ .Values.labs.datasphere.git.targetRevision }}
+    path: {{ .Values.labs.datasphere.git.path }}
+    helm:
+      values: |
+        images:
+          ui: {{ .Values.labs.datasphere.images.ui | quote }}
+          api: {{ .Values.labs.datasphere.images.api | quote }}
+        theme: {{ .Values.labs.datasphere.theme | quote }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.labs.datasphere.namespace }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # Namespace pre-created by ocp4_workload_tenant_namespace
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+{{- end }}

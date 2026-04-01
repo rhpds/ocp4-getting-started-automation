@@ -1,4 +1,3 @@
-import copy
 import json
 import os
 from pathlib import Path
@@ -18,6 +17,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Load redistribution constants ────────────────────────────────────────────
+# When a major hub goes offline, each remaining online hub absorbs this many
+# extra percentage points of capacity.  Raise it to trigger more degraded sites.
+LOAD_PRESSURE = 25          # capacity % added per hub on failure
+
+# Hubs at or above this capacity percentage flip to "degraded" status.
+DEGRADED_THRESHOLD = 85     # capacity % that triggers degraded
+
 # ── In-memory state (resets on pod restart — intentional for demo) ──────────
 _state: dict[str, dict] = {}
 
@@ -35,7 +42,7 @@ def _init_state():
 
 _init_state()
 
-# ── Health break flag (for Lab 8 — health check demo) ───────────────────────
+# ── Health break flag (for health check demo) ────────────────────────────────
 _api_broken = False
 
 
@@ -53,15 +60,6 @@ THEME_METADATA = {
         "name_field": "display_name",
         "region_field": "region",
     },
-    "mars": {
-        "theme": "mars",
-        "map_title": "DataSphere — Mars Operations",
-        "dc_label": "Research Colony",
-        "region_label": "Zone",
-        "status_labels": {"online": "Operational", "degraded": "Limited", "offline": "Dark"},
-        "name_field": "mars_name",
-        "region_field": "mars_region",
-    },
 }
 
 
@@ -75,6 +73,46 @@ def _read_config() -> dict:
     except Exception:
         pass
     return THEME_METADATA.get(DEFAULT_THEME, THEME_METADATA["earth"])
+
+
+# ── Load redistribution helpers ──────────────────────────────────────────────
+
+def _distribute_load(offline_dc_id: str) -> None:
+    """When a major hub fails, spread its workload to remaining online major hubs.
+
+    Each surviving hub absorbs LOAD_PRESSURE extra capacity points.  Hubs that
+    cross DEGRADED_THRESHOLD flip to 'degraded' so the map turns yellow.
+    Regional sites are not cascaded — only major hub failures matter at scale.
+    """
+    offline = _state[offline_dc_id]
+    if offline["tier"] != "major":
+        return
+
+    online_majors = [
+        s for k, s in _state.items()
+        if k != offline_dc_id and s["tier"] == "major" and s["status"] != "offline"
+    ]
+    if not online_majors:
+        return
+
+    extra_workload = offline["base_workload_count"] // len(online_majors)
+    for hub in online_majors:
+        hub["workload_count"] += extra_workload
+        hub["capacity_pct"] = min(99, hub["base_capacity_pct"] + LOAD_PRESSURE)
+        if hub["capacity_pct"] >= DEGRADED_THRESHOLD:
+            hub["status"] = "degraded"
+
+
+def _restore_load() -> None:
+    """Reset all degraded hubs back to their base values.
+
+    Called whenever any hub comes back online so the network stabilises.
+    """
+    for dc in _state.values():
+        if dc["status"] == "degraded":
+            dc["status"] = "online"
+            dc["capacity_pct"] = dc["base_capacity_pct"]
+            dc["workload_count"] = dc["base_workload_count"]
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -119,11 +157,13 @@ def update_status(dc_id: str, body: StatusUpdate):
     if body.status == "online":
         _state[dc_id]["capacity_pct"] = _state[dc_id]["base_capacity_pct"]
         _state[dc_id]["workload_count"] = _state[dc_id]["base_workload_count"]
+        _restore_load()          # stabilise any hubs that were absorbing extra load
     elif body.status == "degraded":
         _state[dc_id]["capacity_pct"] = min(95, _state[dc_id]["base_capacity_pct"] + 15)
     elif body.status == "offline":
         _state[dc_id]["capacity_pct"] = 0
         _state[dc_id]["workload_count"] = 0
+        _distribute_load(dc_id)  # cascade load to remaining online major hubs
 
     return _state[dc_id]
 
@@ -135,7 +175,7 @@ def reset_all():
     return {"status": "reset", "datacenters": len(_state)}
 
 
-# ── Lab 8: Health check demo endpoints ───────────────────────────────────────
+# ── Health check demo endpoints ───────────────────────────────────────────────
 @app.post("/api/break")
 def break_api():
     """Make the health endpoint return 500 — used in the health check lab."""

@@ -1,0 +1,39 @@
+{{ if .Values.datasphereHelmCatalog.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: datasphere-helm-catalog
+  namespace: openshift-gitops
+  labels:
+    app: datasphere-helm-catalog
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: {{ .Values.datasphereHelmCatalog.git.repoURL }}
+    targetRevision: {{ .Values.datasphereHelmCatalog.git.targetRevision }}
+    path: {{ .Values.datasphereHelmCatalog.git.path }}
+    helm:
+      values: |
+        repoURL: {{ .Values.datasphereHelmCatalog.repoURL | default "oci://quay.io/rhpds" | quote }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-gitops
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+{{- end }}

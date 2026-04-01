@@ -3,9 +3,7 @@ DATACENTERS = [
     {
         "id": "rh-us-east",
         "display_name": "US East",
-        "mars_name": "Olympus Base",
         "city": "Virginia",
-        "mars_region": "Tharsis Plateau",
         "region": "Americas",
         "tier": "major",
         "lat": 37.4,
@@ -16,9 +14,7 @@ DATACENTERS = [
     {
         "id": "rh-us-west",
         "display_name": "US West",
-        "mars_name": "Valles Hub",
         "city": "Oregon",
-        "mars_region": "Valles Marineris",
         "region": "Americas",
         "tier": "major",
         "lat": 44.0,
@@ -29,9 +25,7 @@ DATACENTERS = [
     {
         "id": "rh-eu-central",
         "display_name": "EU Central",
-        "mars_name": "Hellas Station",
         "city": "Frankfurt",
-        "mars_region": "Hellas Basin",
         "region": "Europe",
         "tier": "major",
         "lat": 50.1,
@@ -42,9 +36,7 @@ DATACENTERS = [
     {
         "id": "rh-eu-west",
         "display_name": "EU West",
-        "mars_name": "Amazonis Post",
         "city": "Dublin",
-        "mars_region": "Amazonis Planitia",
         "region": "Europe",
         "tier": "major",
         "lat": 53.3,
@@ -55,9 +47,7 @@ DATACENTERS = [
     {
         "id": "rh-apac-ne",
         "display_name": "APAC Northeast",
-        "mars_name": "Elysium Prime",
         "city": "Tokyo",
-        "mars_region": "Elysium Planitia",
         "region": "Asia Pacific",
         "tier": "major",
         "lat": 35.7,
@@ -68,9 +58,7 @@ DATACENTERS = [
     {
         "id": "rh-apac-se",
         "display_name": "APAC Southeast",
-        "mars_name": "Argyre Outpost",
         "city": "Sydney",
-        "mars_region": "Argyre Basin",
         "region": "Asia Pacific",
         "tier": "major",
         "lat": -33.9,
@@ -84,9 +72,7 @@ DATACENTERS = [
     {
         "id": "edge-us-ne",
         "display_name": "US Northeast Edge",
-        "mars_name": "Colony Seven",
         "city": "New York",
-        "mars_region": "Northern Polar",
         "region": "Americas",
         "tier": "regional",
         "lat": 40.7,
@@ -97,9 +83,7 @@ DATACENTERS = [
     {
         "id": "edge-us-south",
         "display_name": "US South Edge",
-        "mars_name": "Dust Bowl Station",
         "city": "Dallas",
-        "mars_region": "Arabia Terra",
         "region": "Americas",
         "tier": "regional",
         "lat": 32.8,
@@ -110,9 +94,7 @@ DATACENTERS = [
     {
         "id": "edge-us-central",
         "display_name": "US Central Edge",
-        "mars_name": "Windy Ridge Post",
         "city": "Chicago",
-        "mars_region": "Acidalia Planitia",
         "region": "Americas",
         "tier": "regional",
         "lat": 41.9,
@@ -123,9 +105,7 @@ DATACENTERS = [
     {
         "id": "edge-us-nw",
         "display_name": "US Northwest Edge",
-        "mars_name": "Rainy Crater Camp",
         "city": "Seattle",
-        "mars_region": "Arcadia Planitia",
         "region": "Americas",
         "tier": "regional",
         "lat": 47.6,
@@ -136,9 +116,7 @@ DATACENTERS = [
     {
         "id": "edge-ca-east",
         "display_name": "Canada East Edge",
-        "mars_name": "Frost Plains Node",
         "city": "Toronto",
-        "mars_region": "Vastitas Borealis",
         "region": "Americas",
         "tier": "regional",
         "lat": 43.7,
@@ -149,9 +127,7 @@ DATACENTERS = [
     {
         "id": "edge-ca-west",
         "display_name": "Canada West Edge",
-        "mars_name": "Glacier Node",
         "city": "Vancouver",
-        "mars_region": "Arcadia Planitia",
         "region": "Americas",
         "tier": "regional",
         "lat": 49.3,
@@ -162,9 +138,7 @@ DATACENTERS = [
     {
         "id": "edge-latam-br",
         "display_name": "LATAM Brazil Edge",
-        "mars_name": "Cerberus Relay",
         "city": "São Paulo",
-        "mars_region": "Cerberus Fossae",
         "region": "Americas",
         "tier": "regional",
         "lat": -23.5,
@@ -175,9 +149,7 @@ DATACENTERS = [
     {
         "id": "edge-latam-mx",
         "display_name": "LATAM Mexico Edge",
-        "mars_name": "Promethei Edge",
         "city": "Mexico City",
-        "mars_region": "Promethei Terra",
         "region": "Americas",
         "tier": "regional",
         "lat": 19.4,
@@ -188,9 +160,7 @@ DATACENTERS = [
     {
         "id": "edge-latam-ar",
         "display_name": "LATAM South Edge",
-        "mars_name": "Southern Crater Post",
         "city": "Buenos Aires",
-        "mars_region": "Noachis Terra",
         "region": "Americas",
         "tier": "regional",
         "lat": -34.6,
@@ -202,9 +172,7 @@ DATACENTERS = [
     {
         "id": "edge-eu-north",
         "display_name": "EU North Edge",
-        "mars_name": "Nordic Shelf Post",
         "city": "Stockholm",
-        "mars_region": "Vastitas Borealis",
         "region": "Europe",
         "tier": "regional",
         "lat": 59.3,
@@ -215,9 +183,7 @@ DATACENTERS = [
     {
         "id": "edge-eu-south",
         "display_name": "EU South Edge",
-        "mars_name": "Iberian Relay",
         "city": "Madrid",
-        "mars_region": "Terra Meridiani",
         "region": "Europe",
         "tier": "regional",
         "lat": 40.4,
@@ -228,9 +194,7 @@ DATACENTERS = [
     {
         "id": "edge-eu-east",
         "display_name": "EU East Edge",
-        "mars_name": "Eastern Plains Node",
         "city": "Warsaw",
-        "mars_region": "Chryse Planitia",
         "region": "Europe",
         "tier": "regional",
         "lat": 52.2,
@@ -241,9 +205,7 @@ DATACENTERS = [
     {
         "id": "edge-eu-benelux",
         "display_name": "EU Benelux Edge",
-        "mars_name": "Delta Post",
         "city": "Amsterdam",
-        "mars_region": "Isidis Planitia",
         "region": "Europe",
         "tier": "regional",
         "lat": 52.4,
@@ -254,9 +216,7 @@ DATACENTERS = [
     {
         "id": "edge-uk-south",
         "display_name": "UK South Edge",
-        "mars_name": "Thames Relay",
         "city": "London",
-        "mars_region": "Utopia Planitia",
         "region": "Europe",
         "tier": "regional",
         "lat": 51.5,
@@ -267,9 +227,7 @@ DATACENTERS = [
     {
         "id": "edge-eu-italy",
         "display_name": "EU Italy Edge",
-        "mars_name": "Alpine Foothills Node",
         "city": "Milan",
-        "mars_region": "Syrtis Major",
         "region": "Europe",
         "tier": "regional",
         "lat": 45.5,
@@ -280,9 +238,7 @@ DATACENTERS = [
     {
         "id": "edge-eu-iberia",
         "display_name": "EU Iberia Edge",
-        "mars_name": "Western Shore Post",
         "city": "Lisbon",
-        "mars_region": "Daedalia Planum",
         "region": "Europe",
         "tier": "regional",
         "lat": 38.7,
@@ -293,9 +249,7 @@ DATACENTERS = [
     {
         "id": "edge-eu-balkans",
         "display_name": "EU Balkans Edge",
-        "mars_name": "Steppe Relay",
         "city": "Bucharest",
-        "mars_region": "Sirenum Terra",
         "region": "Europe",
         "tier": "regional",
         "lat": 44.4,
@@ -307,9 +261,7 @@ DATACENTERS = [
     {
         "id": "edge-apac-sg",
         "display_name": "APAC Singapore Edge",
-        "mars_name": "Equatorial Node",
         "city": "Singapore",
-        "mars_region": "Equatorial Ridge",
         "region": "Asia Pacific",
         "tier": "regional",
         "lat": 1.4,
@@ -320,9 +272,7 @@ DATACENTERS = [
     {
         "id": "edge-apac-in",
         "display_name": "APAC India Edge",
-        "mars_name": "Monsoon Relay",
         "city": "Mumbai",
-        "mars_region": "Arabia Terra",
         "region": "Asia Pacific",
         "tier": "regional",
         "lat": 19.1,
@@ -333,9 +283,7 @@ DATACENTERS = [
     {
         "id": "edge-apac-kr",
         "display_name": "APAC Korea Edge",
-        "mars_name": "Eastern Rim Post",
         "city": "Seoul",
-        "mars_region": "Elysium Planitia",
         "region": "Asia Pacific",
         "tier": "regional",
         "lat": 37.6,
@@ -346,9 +294,7 @@ DATACENTERS = [
     {
         "id": "edge-apac-cn",
         "display_name": "APAC China Edge",
-        "mars_name": "Great Plains Node",
         "city": "Beijing",
-        "mars_region": "Vastitas Borealis",
         "region": "Asia Pacific",
         "tier": "regional",
         "lat": 39.9,
@@ -359,9 +305,7 @@ DATACENTERS = [
     {
         "id": "edge-apac-hk",
         "display_name": "APAC Hong Kong Edge",
-        "mars_name": "Harbor Relay",
         "city": "Hong Kong",
-        "mars_region": "Isidis Basin",
         "region": "Asia Pacific",
         "tier": "regional",
         "lat": 22.3,
@@ -372,9 +316,7 @@ DATACENTERS = [
     {
         "id": "edge-me-gulf",
         "display_name": "Middle East Gulf Edge",
-        "mars_name": "Sand Sea Relay",
         "city": "Dubai",
-        "mars_region": "Arabia Terra",
         "region": "Middle East & Africa",
         "tier": "regional",
         "lat": 25.2,
@@ -385,9 +327,7 @@ DATACENTERS = [
     {
         "id": "edge-af-south",
         "display_name": "Africa South Edge",
-        "mars_name": "Southern Reach Node",
         "city": "Johannesburg",
-        "mars_region": "Terra Cimmeria",
         "region": "Middle East & Africa",
         "tier": "regional",
         "lat": -26.2,
