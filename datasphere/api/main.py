@@ -115,6 +115,26 @@ def _restore_load() -> None:
             dc["workload_count"] = dc["base_workload_count"]
 
 
+def _simulate_cascading_cpu_load() -> None:
+    """Burn CPU proportional to the number of offline major hubs.
+
+    This makes the auto-scaling demo realistic: when datacenters fail,
+    the API genuinely works harder — enough for the HPA to notice.
+    """
+    offline_majors = sum(
+        1 for dc in _state.values()
+        if dc["tier"] == "major" and dc["status"] == "offline"
+    )
+    if offline_majors == 0:
+        return
+    # Scale iterations with offline count. With cpu request 50m,
+    # 2-3 offline hubs should push past the 50% HPA threshold.
+    iterations = offline_majors * 150_000
+    total = 0
+    for i in range(iterations):
+        total += i * i
+
+
 # ── Models ────────────────────────────────────────────────────────────────────
 class StatusUpdate(BaseModel):
     status: str  # online | degraded | offline
@@ -135,6 +155,7 @@ def get_config():
 
 @app.get("/api/datacenters")
 def list_datacenters():
+    _simulate_cascading_cpu_load()
     return list(_state.values())
 
 
