@@ -82,6 +82,6 @@ labs:
       path: datasphere/gitops
       <<: *git_defaults
     images:
-      ui: quay.io/rhpds/datasphere-ui:1.1.0
+      ui: quay.io/rhpds/datasphere-ui:1.1.1
       api: quay.io/rhpds/datasphere-api:1.1.0
     theme: earth
