@@ -17,7 +17,7 @@ data:
     CR=$(curl -sf \
       --cacert "$CACERT" \
       -H "Authorization: Bearer $TOKEN" \
-      "https://kubernetes.default.svc/apis/pfe.rhpds.com/v1/namespaces/${GITEA_NAMESPACE}/giteas/${GITEA_CR_NAME}")
+      "https://kubernetes.default.svc/apis/pfe.rhpds.com/v1/namespaces/${GITEA_NAMESPACE}/gitea/${GITEA_CR_NAME}")
 
     GITEA_ADMIN_USER=$(echo "$CR" | python3 -c \
       "import sys,json; print(json.load(sys.stdin)['spec']['giteaAdminUser'])")
