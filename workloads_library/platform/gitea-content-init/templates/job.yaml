@@ -28,7 +28,7 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              microdnf install -y python3 curl --nodocs --setopt=install_weak_deps=0 --setopt=cachedir=/tmp/yum-cache
+              microdnf install -y python3 --nodocs --setopt=install_weak_deps=0 --setopt=cachedir=/tmp/yum-cache
               exec /bin/bash /scripts/read-gitea-cr.sh
           env:
             - name: GITEA_NAMESPACE
@@ -50,7 +50,7 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              microdnf install -y git curl --nodocs --setopt=install_weak_deps=0 --setopt=cachedir=/tmp/yum-cache
+              microdnf install -y git --nodocs --setopt=install_weak_deps=0 --setopt=cachedir=/tmp/yum-cache
               exec /bin/bash /scripts/init-repos.sh
           env:
             - name: AUTOMATION_REPO_URL
