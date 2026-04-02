@@ -24,7 +24,7 @@ spec:
 
       initContainers:
         - name: read-gitea-cr
-          image: registry.redhat.io/ubi9/python-311:latest
+          image: registry.redhat.io/ubi9/python-312:latest
           command: ["/bin/bash", "/scripts/read-gitea-cr.sh"]
           env:
             - name: GITEA_NAMESPACE
@@ -42,7 +42,7 @@ spec:
 
       containers:
         - name: init-repos
-          image: registry.redhat.io/ubi9/python-311:latest
+          image: registry.redhat.io/ubi9/python-312:latest
           command: ["/bin/bash", "-c"]
           args:
             - |
