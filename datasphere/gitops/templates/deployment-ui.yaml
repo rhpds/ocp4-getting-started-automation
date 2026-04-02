@@ -17,6 +17,47 @@ spec:
         app: datasphere
         component: ui
     spec:
+      initContainers:
+        - name: generate-nginx-conf
+          image: registry.redhat.io/ubi9/python-312:latest
+          command: ["/bin/python3", "-c"]
+          args:
+            - |
+              import re, os
+              nameserver = "169.254.0.10"
+              with open("/etc/resolv.conf") as f:
+                for line in f:
+                  m = re.match(r"nameserver\s+(\S+)", line)
+                  if m:
+                    nameserver = m.group(1)
+                    break
+              namespace = open("/var/run/secrets/kubernetes.io/serviceaccount/namespace").read().strip()
+              api_fqdn = f"datasphere-api.{namespace}.svc.cluster.local"
+              conf = f"""
+              location / {{
+                root /usr/share/nginx/html;
+                try_files $uri $uri/ /index.html;
+              }}
+              location /api/ {{
+                resolver {nameserver} valid=10s;
+                set $api_upstream http://{api_fqdn}:8080;
+                proxy_pass          $api_upstream/api/;
+                proxy_set_header    Host              $host;
+                proxy_set_header    X-Real-IP         $remote_addr;
+                proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
+                proxy_read_timeout  30s;
+              }}
+              """
+              with open("/nginx-config/datasphere.conf", "w") as out:
+                out.write(conf)
+              print(f"nginx config written: api={api_fqdn}, resolver={nameserver}")
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /nginx-config
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 100m, memory: 128Mi }
+
       containers:
         - name: ui
           image: {{ .Values.images.ui }}
@@ -28,3 +69,10 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /opt/app-root/etc/nginx.default.d
+
+      volumes:
+        - name: nginx-config
+          emptyDir: {}
