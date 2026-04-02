@@ -42,12 +42,12 @@ spec:
 
       containers:
         - name: init-repos
-          image: registry.redhat.io/ubi9/ubi-minimal:latest
+          image: registry.redhat.io/ubi9/python-311:latest
           command: ["/bin/bash", "-c"]
           args:
             - |
-              microdnf install -y git --nodocs --setopt=install_weak_deps=0 --setopt=cachedir=/tmp/yum-cache
-              exec /bin/bash /scripts/init-repos.sh
+              source /creds/env
+              exec python3 /scripts/init-repos.py
           env:
             - name: AUTOMATION_REPO_URL
               value: {{ .Values.automationRepo.url | quote }}

@@ -33,100 +33,134 @@ data:
     EOF
     echo "Gitea route: ${GITEA_ROUTE}, admin user: ${GITEA_ADMIN_USER}"
 
-  init-repos.sh: |
-    #!/bin/bash
-    # Seeds Gitea with DataSphere repos and pushes the Helm chart to the package registry.
-    # All operations are idempotent — safe to run on an already-provisioned cluster.
-    set -euo pipefail
+  init-repos.py: |
+    #!/usr/bin/env python3
+    """
+    Seeds Gitea with DataSphere repos and pushes the Helm chart to the package registry.
+    Uses Gitea's contents API and GitHub's archive API — no git binary required.
+    All operations are idempotent.
+    """
+    import base64, io, json, os, sys, tarfile, urllib.error, urllib.request
 
-    source /creds/env
+    GITEA_ADMIN_USER = os.environ["GITEA_ADMIN_USER"]
+    GITEA_ADMIN_PASS = os.environ["GITEA_ADMIN_PASS"]
+    GITEA_ROUTE = os.environ["GITEA_ROUTE"].rstrip("/")
+    AUTOMATION_REPO_URL = os.environ["AUTOMATION_REPO_URL"]
+    AUTOMATION_REPO_REVISION = os.environ["AUTOMATION_REPO_REVISION"]
 
-    GIT_BASE="${GITEA_ROUTE#https://}"
-
-    # ---------------------------------------------------------------------------
-    # Clone the automation repo (shallow — we only need current state)
-    # ---------------------------------------------------------------------------
-    echo "Cloning automation repo..."
-    git clone --depth=1 --branch "${AUTOMATION_REPO_REVISION}" \
-      "${AUTOMATION_REPO_URL}" /tmp/automation
-
-    git config --global user.email "admin@gitea.local"
-    git config --global user.name "Gitea Admin"
-
-    # ---------------------------------------------------------------------------
-    # Create each repo from its subdirectory
-    # ---------------------------------------------------------------------------
-    declare -A REPOS
+    REPOS = {
     {{- range .Values.repositories }}
-    REPOS["{{ .name }}"]="{{ .sourceSubdir }}"
+        "{{ .name }}": "{{ .sourceSubdir }}",
     {{- end }}
+    }
+    HELM_CHART_SUBDIR = "{{ .Values.helmChart.sourceSubdir }}"
 
-    for REPO_NAME in "${!REPOS[@]}"; do
-      SOURCE_SUBDIR="${REPOS[$REPO_NAME]}"
+    _auth = base64.b64encode(f"{GITEA_ADMIN_USER}:{GITEA_ADMIN_PASS}".encode()).decode()
 
-      # Check if repo already exists
-      HTTP_STATUS=$(curl -so /dev/null -w "%{http_code}" \
-        -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
-        "${GITEA_ROUTE}/api/v1/repos/${GITEA_ADMIN_USER}/${REPO_NAME}")
+    def gitea_req(method, path, data=None, content_type="application/json"):
+        url = f"{GITEA_ROUTE}{path}"
+        headers = {"Authorization": f"Basic {_auth}"}
+        body = None
+        if data is not None:
+            if isinstance(data, dict):
+                body = json.dumps(data).encode()
+                headers["Content-Type"] = "application/json"
+            elif isinstance(data, bytes):
+                body = data
+                headers["Content-Type"] = content_type
+        req = urllib.request.Request(url, data=body, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
 
-      if [ "${HTTP_STATUS}" = "200" ]; then
-        echo "Repo ${REPO_NAME} already exists — skipping"
-        continue
-      fi
+    # Download automation repo as a GitHub archive tarball
+    repo_base = AUTOMATION_REPO_URL[:-4] if AUTOMATION_REPO_URL.endswith(".git") else AUTOMATION_REPO_URL
+    tarball_url = f"{repo_base}/archive/{AUTOMATION_REPO_REVISION}.tar.gz"
+    print(f"Downloading {tarball_url}...")
+    with urllib.request.urlopen(tarball_url) as r:
+        tarball_data = r.read()
+    print(f"Downloaded {len(tarball_data)} bytes")
 
-      echo "Creating repo ${REPO_NAME} from ${SOURCE_SUBDIR}..."
+    tar = tarfile.open(fileobj=io.BytesIO(tarball_data), mode="r:gz")
+    top = tar.getnames()[0].split("/")[0]
 
-      # Create empty repo in Gitea
-      curl -sf -X POST \
-        -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
-        -H "Content-Type: application/json" \
-        -d "{\"name\":\"${REPO_NAME}\",\"private\":false,\"auto_init\":false,\"default_branch\":\"main\"}" \
-        "${GITEA_ROUTE}/api/v1/user/repos"
+    def get_subdir_files(subdir):
+        """Return {relative_path: bytes} for all files under top_level/subdir/ in the tarball."""
+        prefix = f"{top}/{subdir}/"
+        result = {}
+        for m in tar.getmembers():
+            if not m.isfile() or not m.name.startswith(prefix):
+                continue
+            rel = m.name[len(prefix):]
+            if rel:
+                f = tar.extractfile(m)
+                if f:
+                    result[rel] = f.read()
+        return result
 
-      # Build a fresh git repo from the subdirectory
-      WORKDIR=$(mktemp -d)
-      cp -r /tmp/automation/${SOURCE_SUBDIR}/. "${WORKDIR}/"
-      cd "${WORKDIR}"
-      git init -b main
-      git add .
-      git commit -m "Initial commit"
-      git push \
-        "http://${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}@${GIT_BASE}/${GITEA_ADMIN_USER}/${REPO_NAME}.git" \
-        main
-      cd /
-      rm -rf "${WORKDIR}"
-      echo "Created ${REPO_NAME}"
-    done
+    # Create repos via Gitea Contents API
+    for repo_name, source_subdir in REPOS.items():
+        status, _ = gitea_req("GET", f"/api/v1/repos/{GITEA_ADMIN_USER}/{repo_name}")
+        if status == 200:
+            print(f"Repo {repo_name} already exists — skipping")
+            continue
 
-    # ---------------------------------------------------------------------------
-    # Push the Helm chart to Gitea's package registry
-    # ---------------------------------------------------------------------------
-    CHART_DIR="/tmp/automation/{{ .Values.helmChart.sourceSubdir }}"
-    CHART_NAME=$(grep '^name:' "${CHART_DIR}/Chart.yaml" | awk '{print $2}')
-    CHART_VERSION=$(grep '^version:' "${CHART_DIR}/Chart.yaml" | awk '{print $2}')
-    CHART_PKG="/tmp/${CHART_NAME}-${CHART_VERSION}.tgz"
+        print(f"Creating {repo_name} from {source_subdir}...")
+        status, body = gitea_req("POST", "/api/v1/user/repos", {
+            "name": repo_name,
+            "private": False,
+            "auto_init": False,
+            "default_branch": "main",
+        })
+        if status not in (200, 201):
+            print(f"ERROR creating repo {repo_name}: {status} {body}", file=sys.stderr)
+            sys.exit(1)
 
-    echo "Packaging Helm chart ${CHART_NAME}-${CHART_VERSION}..."
+        files = get_subdir_files(source_subdir)
+        print(f"  Uploading {len(files)} files...")
+        for rel_path, content in sorted(files.items()):
+            status, body = gitea_req("POST",
+                f"/api/v1/repos/{GITEA_ADMIN_USER}/{repo_name}/contents/{rel_path}",
+                {"message": "Initial commit", "content": base64.b64encode(content).decode()})
+            if status not in (200, 201):
+                print(f"  WARNING {rel_path}: {status} {body[:200]}", file=sys.stderr)
+        print(f"  Done: {repo_name}")
 
-    # Check if chart version is already published
-    HTTP_STATUS=$(curl -so /dev/null -w "%{http_code}" \
-      -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
-      "${GITEA_ROUTE}/api/packages/${GITEA_ADMIN_USER}/helm/api/charts/${CHART_NAME}/${CHART_VERSION}")
+    # Package and push Helm chart to Gitea package registry
+    chart_files = get_subdir_files(HELM_CHART_SUBDIR)
+    chart_yaml = next((c.decode() for p, c in chart_files.items() if p == "Chart.yaml"), "")
+    chart_name = next((l.split(":", 1)[1].strip() for l in chart_yaml.splitlines() if l.startswith("name:")), "")
+    chart_version = next((l.split(":", 1)[1].strip() for l in chart_yaml.splitlines() if l.startswith("version:")), "")
+    print(f"Packaging Helm chart {chart_name}-{chart_version}...")
 
-    if [ "${HTTP_STATUS}" = "200" ]; then
-      echo "Chart ${CHART_NAME}-${CHART_VERSION} already in registry — skipping"
-    else
-      # Package: helm expects a dir named after the chart at the top level of the tarball
-      CHART_STAGE=$(mktemp -d)
-      cp -r "${CHART_DIR}" "${CHART_STAGE}/${CHART_NAME}"
-      tar -czf "${CHART_PKG}" -C "${CHART_STAGE}" "${CHART_NAME}"
-      rm -rf "${CHART_STAGE}"
+    status, _ = gitea_req("GET", f"/api/packages/{GITEA_ADMIN_USER}/helm/api/charts/{chart_name}/{chart_version}")
+    if status == 200:
+        print("Chart already in registry — skipping")
+    else:
+        pkg = io.BytesIO()
+        with tarfile.open(fileobj=pkg, mode="w:gz") as tf:
+            for rel_path, content in sorted(chart_files.items()):
+                info = tarfile.TarInfo(name=f"{chart_name}/{rel_path}")
+                info.size = len(content)
+                tf.addfile(info, io.BytesIO(content))
+        chart_bytes = pkg.getvalue()
 
-      curl -sf \
-        -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
-        -F "chart=@${CHART_PKG}" \
-        "${GITEA_ROUTE}/api/packages/${GITEA_ADMIN_USER}/helm/api/charts"
-      echo "Chart ${CHART_NAME}-${CHART_VERSION} pushed to Gitea package registry"
-    fi
+        boundary = "GitChartBoundary42"
+        body = (
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"chart\"; "
+            f"filename=\"{chart_name}-{chart_version}.tgz\"\r\n"
+            f"Content-Type: application/octet-stream\r\n\r\n"
+        ).encode() + chart_bytes + f"\r\n--{boundary}--\r\n".encode()
 
-    echo "Done."
+        status, resp = gitea_req("POST",
+            f"/api/packages/{GITEA_ADMIN_USER}/helm/api/charts",
+            data=body,
+            content_type=f"multipart/form-data; boundary={boundary}")
+        if status not in (200, 201):
+            print(f"ERROR pushing chart: {status} {resp}", file=sys.stderr)
+            sys.exit(1)
+        print(f"Chart {chart_name}-{chart_version} pushed to Gitea package registry")
+
+    print("Done.")
