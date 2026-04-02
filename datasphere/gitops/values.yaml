@@ -5,7 +5,7 @@ theme: earth
 # ── Images ───────────────────────────────────────────────────────────────────
 images:
   # Pre-built UI image — pulled directly, never built in the workshop
-  ui: quay.io/rhpds/datasphere-ui:1.1.1
+  ui: quay.io/rhpds/datasphere-ui:1.1.2
   # API image — built from source via S2I in Lab 2, then referenced here
   api: quay.io/rhpds/datasphere-api:1.1.0
 

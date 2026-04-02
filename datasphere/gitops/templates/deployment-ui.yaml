@@ -35,7 +35,7 @@ spec:
               api = "datasphere-api." + ns + ".svc.cluster.local"
               with open("/nginx-config/datasphere.conf", "w") as out:
                 out.write("location / {\n")
-                out.write("  root /usr/share/nginx/html;\n")
+                out.write("  root /opt/app-root/src;\n")
                 out.write("  try_files $uri $uri/ /index.html;\n")
                 out.write("}\n")
                 out.write("location /api/ {\n")

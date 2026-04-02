@@ -15,11 +15,11 @@ RUN npm run build
 # UBI9 nginx 1.22 — consistent base for vulnerability scanning
 FROM registry.access.redhat.com/ubi9/nginx-122:latest
 
-# Copy built assets to /usr/share/nginx/html — the root path used in the
-# nginx location config generated at runtime by the Helm init container.
-# See datasphere/gitops/templates/deployment-ui.yaml for the init container
-# that writes the nginx location snippets into /opt/app-root/etc/nginx.default.d/.
-COPY --from=build /opt/app-root/src/dist /usr/share/nginx/html
+# Copy built assets to /opt/app-root/src — the UBI nginx-122 default serve root.
+# This means the image works standalone (oc new-app) without any init container.
+# The Helm init container (deployment-ui.yaml) adds the /api/ proxy location and
+# overrides the static root to /opt/app-root/src to match.
+COPY --from=build /opt/app-root/src/dist /opt/app-root/src
 
 # UBI nginx runs as uid 1001 — no chmod hacks needed
 EXPOSE 8080
