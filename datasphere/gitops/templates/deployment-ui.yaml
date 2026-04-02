@@ -24,33 +24,30 @@ spec:
           args:
             - |
               import re, os
-              nameserver = "169.254.0.10"
+              ns_ip = "169.254.0.10"
               with open("/etc/resolv.conf") as f:
                 for line in f:
                   m = re.match(r"nameserver\s+(\S+)", line)
                   if m:
-                    nameserver = m.group(1)
+                    ns_ip = m.group(1)
                     break
-              namespace = open("/var/run/secrets/kubernetes.io/serviceaccount/namespace").read().strip()
-              api_fqdn = f"datasphere-api.{namespace}.svc.cluster.local"
-              conf = f"""
-              location / {{
-                root /usr/share/nginx/html;
-                try_files $uri $uri/ /index.html;
-              }}
-              location /api/ {{
-                resolver {nameserver} valid=10s;
-                set $api_upstream http://{api_fqdn}:8080;
-                proxy_pass          $api_upstream/api/;
-                proxy_set_header    Host              $host;
-                proxy_set_header    X-Real-IP         $remote_addr;
-                proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
-                proxy_read_timeout  30s;
-              }}
-              """
+              ns = open("/var/run/secrets/kubernetes.io/serviceaccount/namespace").read().strip()
+              api = "datasphere-api." + ns + ".svc.cluster.local"
               with open("/nginx-config/datasphere.conf", "w") as out:
-                out.write(conf)
-              print(f"nginx config written: api={api_fqdn}, resolver={nameserver}")
+                out.write("location / {\n")
+                out.write("  root /usr/share/nginx/html;\n")
+                out.write("  try_files $uri $uri/ /index.html;\n")
+                out.write("}\n")
+                out.write("location /api/ {\n")
+                out.write("  resolver " + ns_ip + " valid=10s;\n")
+                out.write("  set $api_upstream http://" + api + ":8080;\n")
+                out.write("  proxy_pass          $api_upstream/api/;\n")
+                out.write("  proxy_set_header    Host              $host;\n")
+                out.write("  proxy_set_header    X-Real-IP         $remote_addr;\n")
+                out.write("  proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;\n")
+                out.write("  proxy_read_timeout  30s;\n")
+                out.write("}\n")
+              print("nginx config written: api=" + api + ", resolver=" + ns_ip)
           volumeMounts:
             - name: nginx-config
               mountPath: /nginx-config
