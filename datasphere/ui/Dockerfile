@@ -16,12 +16,15 @@ RUN npm run build
 FROM registry.access.redhat.com/ubi9/nginx-122:latest
 
 # Copy built assets to /opt/app-root/src — the UBI nginx-122 default serve root.
-# This means the image works standalone (oc new-app) without any init container.
-# The Helm init container (deployment-ui.yaml) adds the /api/ proxy location and
-# overrides the static root to /opt/app-root/src to match.
 COPY --from=build /opt/app-root/src/dist /opt/app-root/src
+
+# Startup script: generates the nginx proxy config at container start using the
+# in-cluster DNS resolver. Works with any deployment method (oc new-app, Helm)
+# without requiring an init container.
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # UBI nginx runs as uid 1001 — no chmod hacks needed
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["docker-entrypoint.sh"]
