@@ -13,7 +13,7 @@ metadata:
   namespace: {{ .Values.gitea.namespace }}
 rules:
   - apiGroups: ["pfe.rhpds.com"]
-    resources: ["giteas"]
+    resources: ["gitea"]
     verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
