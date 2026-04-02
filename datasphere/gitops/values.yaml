@@ -19,6 +19,10 @@ api:
     limits:
       cpu: 200m
       memory: 128Mi
+  hpa:
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 50
 
 ui:
   replicas: 1
