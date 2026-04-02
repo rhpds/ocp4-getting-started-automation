@@ -1,2 +1,3 @@
 node_modules/
-dist/
+# dist/ is committed so the inline Dockerfile (Apple Silicon workaround) can COPY from it.
+# See datasphere/gitops/PUBLISHING.md for the build workflow.

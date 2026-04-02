@@ -1,11 +1,8 @@
 export const THEMES = {
   earth: {
     id: 'earth',
-    // Colors
+    // App chrome
     bg: '#0d1b2e',
-    mapBg: '#0a1628',
-    countryFill: '#162a4a',
-    countryStroke: '#1e4080',
     headerBg: '#0a1628',
     headerBorder: '#1e4080',
     panelBg: '#111f38',
@@ -18,6 +15,13 @@ export const THEMES = {
       degraded: '#f59e0b',
       offline: '#ef4444',
     },
+    // Map
+    mapBg: '#0a1628',
+    countryFill: '#162a4a',
+    countryStroke: '#1e4080',
+    // Arcs — cyan stands out against the blue map background
+    arcColor: 'rgba(0,220,255,0.75)',
+    arcColorDim: 'rgba(0,220,255,0.55)',
     // Copy
     mapTitle: 'DataSphere',
     mapSubtitle: 'Global Infrastructure Operations',
@@ -36,11 +40,8 @@ export const THEMES = {
   },
   mars: {
     id: 'mars',
-    // Colors
+    // App chrome
     bg: '#1a0800',
-    mapBg: '#130500',
-    countryFill: '#3d1205',
-    countryStroke: '#6b2208',
     headerBg: '#130500',
     headerBorder: '#8b3a0f',
     panelBg: '#220c02',
@@ -53,6 +54,13 @@ export const THEMES = {
       degraded: '#fbbf24',
       offline: '#7f1d1d',
     },
+    // Map
+    mapBg: '#130500',
+    countryFill: '#3d1205',
+    countryStroke: '#6b2208',
+    // Arcs — warm amber over the dark rust background
+    arcColor: 'rgba(255,160,60,0.75)',
+    arcColorDim: 'rgba(255,160,60,0.55)',
     // Copy
     mapTitle: 'DataSphere',
     mapSubtitle: 'Mars Operations Command',

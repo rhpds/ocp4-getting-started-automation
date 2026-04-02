@@ -15,12 +15,11 @@ RUN npm run build
 # UBI9 nginx 1.22 — consistent base for vulnerability scanning
 FROM registry.access.redhat.com/ubi9/nginx-122:latest
 
-# Copy built assets to the UBI nginx serve root (/opt/app-root/src)
-# Note: /etc/nginx/conf.d/ and /usr/share/nginx/html are NOT used by UBI nginx-122.
-# The nginx.conf location snippets are injected at runtime by the Helm init container
-# (see datasphere/gitops/templates/deployment-ui.yaml) to pick up the cluster DNS
-# resolver and API FQDN dynamically.
-COPY --from=build /opt/app-root/src/dist /opt/app-root/src
+# Copy built assets to /usr/share/nginx/html — the root path used in the
+# nginx location config generated at runtime by the Helm init container.
+# See datasphere/gitops/templates/deployment-ui.yaml for the init container
+# that writes the nginx location snippets into /opt/app-root/etc/nginx.default.d/.
+COPY --from=build /opt/app-root/src/dist /usr/share/nginx/html
 
 # UBI nginx runs as uid 1001 — no chmod hacks needed
 EXPOSE 8080

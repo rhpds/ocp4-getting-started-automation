@@ -1,27 +1,54 @@
-import { useState } from 'react'
-import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps'
+import { useState, useMemo } from 'react'
+import { ComposableMap, Geographies, Geography, Marker, Line, ZoomableGroup } from 'react-simple-maps'
 
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
-
-// Regional labels appear once zoomed in enough to be useful
 const REGIONAL_LABEL_ZOOM = 2.5
 
 export default function DataSphereMap({ theme, datacenters, selected, onSelect }) {
   const [zoom, setZoom] = useState(1)
 
+  // Major-to-major backbone (full mesh) + each regional → nearest major hub
+  const arcs = useMemo(() => {
+    const majors = datacenters.filter(dc => dc.tier === 'major' && dc.status !== 'offline')
+    const regionals = datacenters.filter(dc => dc.tier === 'regional' && dc.status !== 'offline')
+    const result = []
+
+    for (let i = 0; i < majors.length; i++) {
+      for (let j = i + 1; j < majors.length; j++) {
+        result.push({ from: majors[i], to: majors[j], isMajor: true })
+      }
+    }
+
+    for (const r of regionals) {
+      if (!majors.length) continue
+      let nearest = majors[0], minDist = Infinity
+      for (const m of majors) {
+        const d = Math.hypot(r.lat - m.lat, r.lng - m.lng)
+        if (d < minDist) { minDist = d; nearest = m }
+      }
+      result.push({ from: r, to: nearest, isMajor: false })
+    }
+
+    return result
+  }, [datacenters])
+
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      background: theme.mapBg,
-      transition: 'background 0.8s ease',
-    }}>
+    <div style={{ width: '100%', height: '100%', background: theme.mapBg, position: 'relative', transition: 'background 0.8s ease' }}>
+
+      {/* Keyframes for the flowing arc dash animation */}
+      <style>{`
+        @keyframes arc-flow { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+        @keyframes arc-flow-dim { from { stroke-dashoffset: 12; } to { stroke-dashoffset: 0; } }
+      `}</style>
+
       <ComposableMap
         projection="geoMercator"
         projectionConfig={{ scale: 140, center: [15, 15] }}
         style={{ width: '100%', height: '100%' }}
       >
         <ZoomableGroup onMoveEnd={({ zoom }) => setZoom(zoom)}>
+
+          {/* Countries */}
           <Geographies geography={GEO_URL}>
             {({ geographies }) =>
               geographies.map(geo => (
@@ -41,6 +68,25 @@ export default function DataSphereMap({ theme, datacenters, selected, onSelect }
             }
           </Geographies>
 
+          {/* Traffic arcs — rendered before markers so dots appear on top */}
+          {arcs.map((arc, i) => (
+            <Line
+              key={i}
+              from={[arc.from.lng, arc.from.lat]}
+              to={[arc.to.lng, arc.to.lat]}
+              stroke={arc.isMajor ? theme.arcColor : theme.arcColorDim}
+              strokeWidth={arc.isMajor ? 1.2 / zoom : 0.9 / zoom}
+              strokeLinecap="round"
+              style={{
+                strokeDasharray: arc.isMajor ? '8 4' : '3 9',
+                animation: arc.isMajor
+                  ? 'arc-flow 1.8s linear infinite'
+                  : 'arc-flow-dim 3.5s linear infinite',
+              }}
+            />
+          ))}
+
+          {/* Datacenter markers */}
           {datacenters.map(dc => {
             const isSelected = selected?.id === dc.id
             const isMajor = dc.tier === 'major'
@@ -48,7 +94,6 @@ export default function DataSphereMap({ theme, datacenters, selected, onSelect }
             const label = dc[theme.nameField] ?? dc.display_name
             const showLabel = isMajor || zoom >= REGIONAL_LABEL_ZOOM
 
-            // Scale all SVG sizes inversely with zoom → consistent visual size at any zoom level
             const r = (isMajor ? theme.majorRadius : theme.regionalRadius) / zoom
             const fontSize = (isMajor ? 10 : 9) / zoom
             const labelY = -(r + 4 / zoom)
@@ -57,18 +102,9 @@ export default function DataSphereMap({ theme, datacenters, selected, onSelect }
 
             return (
               <Marker key={dc.id} coordinates={[dc.lng, dc.lat]}>
-                {/* Pulse ring for online major sites */}
                 {isMajor && dc.status === 'online' && (
-                  <circle
-                    r={ringR}
-                    fill="none"
-                    stroke={color}
-                    strokeWidth={1 / zoom}
-                    opacity={0.35}
-                  />
+                  <circle r={ringR} fill="none" stroke={color} strokeWidth={1 / zoom} opacity={0.35} />
                 )}
-
-                {/* Main dot */}
                 <circle
                   r={r}
                   fill={color}
@@ -77,8 +113,6 @@ export default function DataSphereMap({ theme, datacenters, selected, onSelect }
                   style={{ cursor: 'pointer', transition: 'fill 0.3s ease' }}
                   onClick={() => onSelect(dc)}
                 />
-
-                {/* Label — always for major, zoom-gated for regional */}
                 {showLabel && (
                   <text
                     textAnchor="middle"
@@ -97,6 +131,7 @@ export default function DataSphereMap({ theme, datacenters, selected, onSelect }
               </Marker>
             )
           })}
+
         </ZoomableGroup>
       </ComposableMap>
 
