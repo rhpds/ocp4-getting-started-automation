@@ -21,23 +21,21 @@ spec:
           ui: {{ .Values.labs.datasphere.images.ui | quote }}
           api: {{ .Values.labs.datasphere.images.api | quote }}
         theme: {{ .Values.labs.datasphere.theme | quote }}
+        api:
+          replicas: {{ .Values.labs.datasphere.api.replicas }}
+          resources:
+            {{- .Values.labs.datasphere.api.resources | toYaml | nindent 12 }}
+          hpa:
+            {{- .Values.labs.datasphere.api.hpa | toYaml | nindent 12 }}
 
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ .Values.labs.datasphere.namespace }}
 
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=false  # Namespace pre-created by ocp4_workload_tenant_namespace
-      - SkipDryRunOnMissingResource=true
-      - RespectIgnoreDifferences=true
-    retry:
-      limit: 10
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
+  # Manual sync: Lab 3 requires students to modify the live deployment
+  # (scaling replicas, deleting pods, removing HPA). Auto-sync would
+  # revert their changes. The initial sync happens on creation via the
+  # ArgoCD controller's default behavior.
+  syncPolicy: {}
+
 {{- end }}

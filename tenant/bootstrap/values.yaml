@@ -83,5 +83,18 @@ labs:
       <<: *git_defaults
     images:
       ui: quay.io/rhpds/datasphere-ui:1.1.3
-      api: quay.io/rhpds/datasphere-api:1.1.0
+      api: quay.io/rhpds/datasphere-api:1.2.0
     theme: earth
+    api:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+      hpa:
+        minReplicas: 1
+        maxReplicas: 5
+        targetCPUUtilizationPercentage: 50
