@@ -7,7 +7,7 @@ metadata:
 data:
   read-gitea-cr.sh: |
     #!/bin/bash
-    # Identical to the cluster-level version — reads Gitea CR credentials.
+    # Reads Gitea CR credentials and writes them to /creds/env.
     set -euo pipefail
 
     TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
@@ -16,7 +16,7 @@ data:
     CR=$(curl -sf \
       --cacert "$CACERT" \
       -H "Authorization: Bearer $TOKEN" \
-      "https://kubernetes.default.svc/apis/pfe.rhpds.com/v1/namespaces/${GITEA_NAMESPACE}/giteas/${GITEA_CR_NAME}")
+      "https://kubernetes.default.svc/apis/pfe.rhpds.com/v1/namespaces/${GITEA_NAMESPACE}/gitea/${GITEA_CR_NAME}")
 
     GITEA_ADMIN_USER=$(echo "$CR" | python3 -c \
       "import sys,json; print(json.load(sys.stdin)['spec']['giteaAdminUser'])")
@@ -30,61 +30,90 @@ data:
     export GITEA_ADMIN_PASS="${GITEA_ADMIN_PASS}"
     export GITEA_ROUTE="${GITEA_ROUTE}"
     EOF
+    echo "Gitea route: ${GITEA_ROUTE}, admin user: ${GITEA_ADMIN_USER}"
 
-  seed-user-repos.sh: |
-    #!/bin/bash
-    # Creates fresh per-user repo copies from admin-owned repos.
-    # Each user repo gets a clean single-commit history.
-    set -euo pipefail
+  seed-user-repos.py: |
+    #!/usr/bin/env python3
+    """
+    Creates fresh per-user repo copies from admin-owned repos via Gitea API.
+    No git binary required. All operations are idempotent.
+    """
+    import base64, json, os, sys, urllib.error, urllib.request
 
-    source /creds/env
+    GITEA_ADMIN_USER = os.environ["GITEA_ADMIN_USER"]
+    GITEA_ADMIN_PASS = os.environ["GITEA_ADMIN_PASS"]
+    GITEA_ROUTE = os.environ["GITEA_ROUTE"].rstrip("/")
+    GITEA_USER = os.environ["GITEA_USER"]
+    REPOS = os.environ["REPOS"].split()
 
-    GIT_BASE="${GITEA_ROUTE#https://}"
+    _auth = base64.b64encode(f"{GITEA_ADMIN_USER}:{GITEA_ADMIN_PASS}".encode()).decode()
 
-    git config --global user.email "admin@gitea.local"
-    git config --global user.name "Gitea Admin"
+    def gitea_req(method, path, data=None):
+        url = f"{GITEA_ROUTE}{path}"
+        headers = {"Authorization": f"Basic {_auth}"}
+        body = None
+        if data is not None:
+            body = json.dumps(data).encode()
+            headers["Content-Type"] = "application/json"
+        req = urllib.request.Request(url, data=body, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
 
-    for REPO_NAME in ${REPOS}; do
-      # Check if user repo already exists
-      HTTP_STATUS=$(curl -so /dev/null -w "%{http_code}" \
-        -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
-        "${GITEA_ROUTE}/api/v1/repos/${GITEA_USER}/${REPO_NAME}")
+    def get_admin_repo_files(repo_name):
+        """Return {path: bytes} for all files in the admin's copy of repo_name."""
+        status, body = gitea_req("GET", f"/api/v1/repos/{GITEA_ADMIN_USER}/{repo_name}/git/refs/heads/main")
+        if status != 200:
+            raise RuntimeError(f"Cannot get refs for {repo_name}: {status}")
+        sha = json.loads(body)[0]["object"]["sha"]
 
-      if [ "${HTTP_STATUS}" = "200" ]; then
-        echo "Repo ${GITEA_USER}/${REPO_NAME} already exists — skipping"
-        continue
-      fi
+        status, body = gitea_req("GET", f"/api/v1/repos/{GITEA_ADMIN_USER}/{repo_name}/git/trees/{sha}?recursive=1")
+        if status != 200:
+            raise RuntimeError(f"Cannot get tree for {repo_name}: {status}")
+        tree = json.loads(body)["tree"]
 
-      echo "Creating ${GITEA_USER}/${REPO_NAME} from admin/${REPO_NAME}..."
+        files = {}
+        for item in tree:
+            if item["type"] != "blob":
+                continue
+            path = item["path"]
+            raw_req = urllib.request.Request(
+                f"{GITEA_ROUTE}/{GITEA_ADMIN_USER}/{repo_name}/raw/branch/main/{path}",
+                headers={"Authorization": f"Basic {_auth}"})
+            try:
+                with urllib.request.urlopen(raw_req) as r:
+                    files[path] = r.read()
+            except Exception as e:
+                print(f"  WARNING: could not read {path}: {e}", file=sys.stderr)
+        return files
 
-      # Create empty repo in user's account (admin creates on behalf of user)
-      curl -sf -X POST \
-        -u "${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}" \
-        -H "Content-Type: application/json" \
-        -d "{\"name\":\"${REPO_NAME}\",\"private\":false,\"auto_init\":false,\"default_branch\":\"main\"}" \
-        "${GITEA_ROUTE}/api/v1/admin/users/${GITEA_USER}/repos"
+    for repo_name in REPOS:
+        status, _ = gitea_req("GET", f"/api/v1/repos/{GITEA_USER}/{repo_name}")
+        if status == 200:
+            print(f"Repo {GITEA_USER}/{repo_name} already exists — skipping")
+            continue
 
-      # Clone from admin repo, create fresh copy for student
-      WORKDIR=$(mktemp -d)
-      git clone \
-        "http://${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}@${GIT_BASE}/${GITEA_ADMIN_USER}/${REPO_NAME}.git" \
-        "${WORKDIR}/src"
+        print(f"Creating {GITEA_USER}/{repo_name} from {GITEA_ADMIN_USER}/{repo_name}...")
+        status, body = gitea_req("POST", f"/api/v1/admin/users/{GITEA_USER}/repos", {
+            "name": repo_name,
+            "private": False,
+            "auto_init": False,
+            "default_branch": "main",
+        })
+        if status not in (200, 201):
+            print(f"ERROR creating repo: {status} {body}", file=sys.stderr)
+            sys.exit(1)
 
-      # Fresh repo — single commit, no upstream history
-      mkdir "${WORKDIR}/fresh"
-      cp -r "${WORKDIR}/src/." "${WORKDIR}/fresh/"
-      rm -rf "${WORKDIR}/fresh/.git"
-      cd "${WORKDIR}/fresh"
-      git init -b main
-      git add .
-      git commit -m "Initial commit"
-      git push \
-        "http://${GITEA_ADMIN_USER}:${GITEA_ADMIN_PASS}@${GIT_BASE}/${GITEA_USER}/${REPO_NAME}.git" \
-        main
+        files = get_admin_repo_files(repo_name)
+        print(f"  Uploading {len(files)} files...")
+        for rel_path, content in sorted(files.items()):
+            status, body = gitea_req("POST",
+                f"/api/v1/repos/{GITEA_USER}/{repo_name}/contents/{rel_path}",
+                {"message": "Initial commit", "content": base64.b64encode(content).decode()})
+            if status not in (200, 201):
+                print(f"  WARNING {rel_path}: {status} {body[:200]}", file=sys.stderr)
+        print(f"  Done: {GITEA_USER}/{repo_name}")
 
-      cd /
-      rm -rf "${WORKDIR}"
-      echo "Created ${GITEA_USER}/${REPO_NAME}"
-    done
-
-    echo "Done."
+    print("Done.")

@@ -6,7 +6,7 @@ metadata:
   annotations:
     # Re-run via: oc create job gitea-content-init-manual --from=job/gitea-content-init -n gitea
     argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 5
   activeDeadlineSeconds: 600
