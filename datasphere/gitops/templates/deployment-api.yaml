@@ -24,6 +24,10 @@ spec:
       containers:
         - name: api
           image: {{ .Values.images.api }}
+          {{- with .Values.api.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - containerPort: 8080
           env:
