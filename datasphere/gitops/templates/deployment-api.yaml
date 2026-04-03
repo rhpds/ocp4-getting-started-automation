@@ -33,6 +33,8 @@ spec:
           env:
             - name: DATASPHERE_CONFIG_PATH
               value: /etc/datasphere/config.json
+            - name: REDIS_URL
+              value: "redis://redis:6379"
           volumeMounts:
             - name: theme-config
               mountPath: /etc/datasphere

@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datasphere-redis
+  labels:
+    app: datasphere
+    component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datasphere
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: datasphere
+        component: redis
+    spec:
+      containers:
+        - name: redis
+          image: {{ .Values.images.redis }}
+          ports:
+            - containerPort: 6379
+          {{- with .Values.redis.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          readinessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
