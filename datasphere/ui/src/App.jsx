@@ -4,6 +4,7 @@ import { getTheme } from './themes'
 import DataSphereMap from './components/DataSphereMap'
 import DatacenterPanel from './components/DatacenterPanel'
 import StatusBar from './components/StatusBar'
+import LoadControlPanel from './components/LoadControlPanel'
 
 const POLL_INTERVAL_MS = 3000
 const CONFIG_POLL_INTERVAL_MS = 10000
@@ -14,6 +15,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [apiError, setApiError] = useState(false)
+  const [loadStats, setLoadStats] = useState(null)
 
   // Derive selected object from live datacenters — no stale closure possible
   const selected = datacenters.find(d => d.id === selectedId) ?? null
@@ -30,8 +32,12 @@ export default function App() {
   // No dependency on selectedId — interval stays stable, close button works
   const fetchDatacenters = useCallback(async () => {
     try {
-      const { data } = await axios.get('/api/datacenters')
-      setDatacenters(data)
+      const [dcRes, loadRes] = await Promise.all([
+        axios.get('/api/datacenters'),
+        axios.get('/api/load'),
+      ])
+      setDatacenters(dcRes.data)
+      setLoadStats(loadRes.data)
       setLastUpdated(new Date())
       setApiError(false)
     } catch {
@@ -113,6 +119,7 @@ export default function App() {
             selected={selected}
             onSelect={dc => setSelectedId(dc.id)}
           />
+          <LoadControlPanel theme={theme} loadStats={loadStats} />
         </div>
 
         {selected && (
