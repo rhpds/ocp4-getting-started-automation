@@ -1,5 +1,8 @@
+import asyncio
 import json
 import os
+import socket
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -9,7 +12,30 @@ from pydantic import BaseModel
 from seed_data import DATACENTERS
 import state
 
-app = FastAPI(title="DataSphere API", version="1.3.0")
+_HOSTNAME = socket.gethostname()
+
+
+@asynccontextmanager
+async def lifespan(app):
+    """Seed state and register pod heartbeat while the app is running."""
+    state.init_state()
+    stop = asyncio.Event()
+
+    async def _heartbeat():
+        while not stop.is_set():
+            state.register_pod_heartbeat(_HOSTNAME)
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=5)
+            except asyncio.TimeoutError:
+                pass
+
+    task = asyncio.create_task(_heartbeat())
+    yield
+    stop.set()
+    await task
+
+
+app = FastAPI(title="DataSphere API", version="1.4.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,9 +50,6 @@ DEGRADED_THRESHOLD = 85     # capacity % that triggers degraded
 
 # ── Per-pod health flag (intentionally NOT shared in Redis) ──────────────────
 _api_broken = False
-
-# ── Seed state on startup ───────────────────────────────────────────────────
-state.init_state()
 
 # ── Theme config ─────────────────────────────────────────────────────────────
 CONFIG_FILE = Path(os.getenv("DATASPHERE_CONFIG_PATH", "/etc/datasphere/config.json"))
@@ -94,12 +117,16 @@ def _restore_load() -> None:
                                         workload_count=dc["base_workload_count"])
 
 
-def _simulate_cascading_cpu_load() -> None:
-    """Burn CPU proportional to the number of offline major hubs."""
-    offline_majors = state.count_offline_majors()
-    if offline_majors == 0:
+def _simulate_load() -> None:
+    """Burn CPU based on combined simulated + offline-penalty load, divided by replicas."""
+    simulated = state.get_simulated_load()
+    offline_penalty = state.count_offline_majors() * 15
+    total_load = min(100, simulated + offline_penalty)
+    if total_load == 0:
         return
-    iterations = offline_majors * 150_000
+    replica_count = state.get_replica_count()
+    per_pod = total_load / replica_count
+    iterations = int(per_pod * 3000)
     total = 0
     for i in range(iterations):
         total += i * i
@@ -108,6 +135,10 @@ def _simulate_cascading_cpu_load() -> None:
 # ── Models ────────────────────────────────────────────────────────────────────
 class StatusUpdate(BaseModel):
     status: str  # online | degraded | offline
+
+
+class LoadLevel(BaseModel):
+    level: int  # 0-100
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -125,7 +156,7 @@ def get_config():
 
 @app.get("/api/datacenters")
 def list_datacenters():
-    _simulate_cascading_cpu_load()
+    _simulate_load()
     return state.get_all_datacenters()
 
 
@@ -165,9 +196,34 @@ def update_status(dc_id: str, body: StatusUpdate):
     return state.get_datacenter(dc_id)
 
 
+@app.post("/api/load")
+def set_load(body: LoadLevel):
+    """Set the simulated traffic load level (0-100)."""
+    clamped = max(0, min(100, body.level))
+    state.set_simulated_load(clamped)
+    return {"status": "ok", "level": clamped}
+
+
+@app.get("/api/load")
+def get_load():
+    """Return current load breakdown."""
+    simulated = state.get_simulated_load()
+    offline_penalty = state.count_offline_majors() * 15
+    total_load = min(100, simulated + offline_penalty)
+    replica_count = state.get_replica_count()
+    per_pod = round(total_load / replica_count, 1)
+    return {
+        "simulated_load": simulated,
+        "offline_penalty": offline_penalty,
+        "total_load": total_load,
+        "replica_count": replica_count,
+        "per_pod_load": per_pod,
+    }
+
+
 @app.post("/api/reset")
 def reset_all():
-    """Reset all datacenters to their default state."""
+    """Reset all datacenters and simulated load to defaults."""
     state.reset_state()
     return {"status": "reset", "datacenters": len(DATACENTERS)}
 
