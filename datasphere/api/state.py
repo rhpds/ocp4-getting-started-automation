@@ -9,7 +9,6 @@ The ``_api_broken`` health flag is intentionally kept per-pod (in-memory)
 so the health-probe lab can break one pod without affecting others.
 """
 
-import json
 import logging
 import os
 from typing import Optional
