@@ -189,11 +189,13 @@ def get_online_major_ids(exclude_id: str) -> list[str]:
 
 def reset_state() -> None:
     """Reset all datacenters to defaults."""
+    global _simulated_load
     if _use_redis:
         pipe = _redis.pipeline()
         for dc in DATACENTERS:
             pipe.delete(_dc_key(dc["id"]))
         pipe.delete(_SEED_SENTINEL)
+        pipe.delete(_SIMULATED_LOAD_KEY)
         pipe.execute()
         # Re-seed
         init_state()
@@ -201,3 +203,45 @@ def reset_state() -> None:
         _state.clear()
         defaults = _seed_defaults()
         _state.update(defaults)
+        _simulated_load = 0
+
+
+# ── Load simulation state ──────────────────────────────────────────────────
+
+_SIMULATED_LOAD_KEY = "datasphere:simulated_load"
+
+# In-memory fallback for simulated load (single-pod, no cross-pod sharing)
+_simulated_load: int = 0
+
+
+def get_simulated_load() -> int:
+    """Return the current simulated load level (0-100)."""
+    global _simulated_load
+    if _use_redis:
+        val = _redis.get(_SIMULATED_LOAD_KEY)
+        return int(val) if val else 0
+    return _simulated_load
+
+
+def set_simulated_load(level: int) -> None:
+    """Set the simulated load level (0-100)."""
+    global _simulated_load
+    clamped = max(0, min(100, level))
+    if _use_redis:
+        _redis.set(_SIMULATED_LOAD_KEY, str(clamped))
+    else:
+        _simulated_load = clamped
+
+
+def register_pod_heartbeat(hostname: str) -> None:
+    """Register this pod's heartbeat in Redis with a 15s TTL."""
+    if _use_redis:
+        _redis.set(f"pod:{hostname}", "1", ex=15)
+
+
+def get_replica_count() -> int:
+    """Count active pods via heartbeat keys in Redis."""
+    if _use_redis:
+        keys = _redis.keys("pod:*")
+        return max(1, len(keys))
+    return 1
