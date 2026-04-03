@@ -7,8 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from seed_data import DATACENTERS
+import state
 
-app = FastAPI(title="DataSphere API", version="1.0.0")
+app = FastAPI(title="DataSphere API", version="1.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,33 +19,14 @@ app.add_middleware(
 )
 
 # ── Load redistribution constants ────────────────────────────────────────────
-# When a major hub goes offline, each remaining online hub absorbs this many
-# extra percentage points of capacity.  Raise it to trigger more degraded sites.
 LOAD_PRESSURE = 25          # capacity % added per hub on failure
-
-# Hubs at or above this capacity percentage flip to "degraded" status.
 DEGRADED_THRESHOLD = 85     # capacity % that triggers degraded
 
-# ── In-memory state (resets on pod restart — intentional for demo) ──────────
-_state: dict[str, dict] = {}
-
-
-def _init_state():
-    for dc in DATACENTERS:
-        _state[dc["id"]] = {
-            **dc,
-            "status": "online",
-            "capacity_pct": dc["base_capacity_pct"],
-            "workload_count": dc["base_workload_count"],
-            "uptime_pct": 99.97 if dc["tier"] == "major" else 99.5,
-        }
-
-
-_init_state()
-
-# ── Health break flag (for health check demo) ────────────────────────────────
+# ── Per-pod health flag (intentionally NOT shared in Redis) ──────────────────
 _api_broken = False
 
+# ── Seed state on startup ───────────────────────────────────────────────────
+state.init_state()
 
 # ── Theme config ─────────────────────────────────────────────────────────────
 CONFIG_FILE = Path(os.getenv("DATASPHERE_CONFIG_PATH", "/etc/datasphere/config.json"))
@@ -78,57 +60,45 @@ def _read_config() -> dict:
 # ── Load redistribution helpers ──────────────────────────────────────────────
 
 def _distribute_load(offline_dc_id: str) -> None:
-    """When a major hub fails, spread its workload to remaining online major hubs.
-
-    Each surviving hub absorbs LOAD_PRESSURE extra capacity points.  Hubs that
-    cross DEGRADED_THRESHOLD flip to 'degraded' so the map turns yellow.
-    Regional sites are not cascaded — only major hub failures matter at scale.
-    """
-    offline = _state[offline_dc_id]
-    if offline["tier"] != "major":
+    """When a major hub fails, spread its workload to remaining online major hubs."""
+    offline = state.get_datacenter(offline_dc_id)
+    if not offline or offline["tier"] != "major":
         return
 
-    online_majors = [
-        s for k, s in _state.items()
-        if k != offline_dc_id and s["tier"] == "major" and s["status"] != "offline"
-    ]
-    if not online_majors:
+    online_major_ids = state.get_online_major_ids(offline_dc_id)
+    if not online_major_ids:
         return
 
-    extra_workload = offline["base_workload_count"] // len(online_majors)
-    for hub in online_majors:
-        hub["workload_count"] += extra_workload
-        hub["capacity_pct"] = min(99, hub["base_capacity_pct"] + LOAD_PRESSURE)
-        if hub["capacity_pct"] >= DEGRADED_THRESHOLD:
-            hub["status"] = "degraded"
+    extra_workload = offline["base_workload_count"] // len(online_major_ids)
+    for hub_id in online_major_ids:
+        hub = state.get_datacenter(hub_id)
+        if not hub:
+            continue
+        new_workload = hub["workload_count"] + extra_workload
+        new_capacity = min(99, hub["base_capacity_pct"] + LOAD_PRESSURE)
+        new_status = "degraded" if new_capacity >= DEGRADED_THRESHOLD else hub["status"]
+        state.set_datacenter_fields(hub_id,
+                                    workload_count=new_workload,
+                                    capacity_pct=new_capacity,
+                                    status=new_status)
 
 
 def _restore_load() -> None:
-    """Reset all degraded hubs back to their base values.
-
-    Called whenever any hub comes back online so the network stabilises.
-    """
-    for dc in _state.values():
+    """Reset all degraded hubs back to their base values."""
+    all_dcs = state.get_all_datacenters()
+    for dc in all_dcs:
         if dc["status"] == "degraded":
-            dc["status"] = "online"
-            dc["capacity_pct"] = dc["base_capacity_pct"]
-            dc["workload_count"] = dc["base_workload_count"]
+            state.set_datacenter_fields(dc["id"],
+                                        status="online",
+                                        capacity_pct=dc["base_capacity_pct"],
+                                        workload_count=dc["base_workload_count"])
 
 
 def _simulate_cascading_cpu_load() -> None:
-    """Burn CPU proportional to the number of offline major hubs.
-
-    This makes the auto-scaling demo realistic: when datacenters fail,
-    the API genuinely works harder — enough for the HPA to notice.
-    """
-    offline_majors = sum(
-        1 for dc in _state.values()
-        if dc["tier"] == "major" and dc["status"] == "offline"
-    )
+    """Burn CPU proportional to the number of offline major hubs."""
+    offline_majors = state.count_offline_majors()
     if offline_majors == 0:
         return
-    # Scale iterations with offline count. With cpu request 50m,
-    # 2-3 offline hubs should push past the 50% HPA threshold.
     iterations = offline_majors * 150_000
     total = 0
     for i in range(iterations):
@@ -156,44 +126,50 @@ def get_config():
 @app.get("/api/datacenters")
 def list_datacenters():
     _simulate_cascading_cpu_load()
-    return list(_state.values())
+    return state.get_all_datacenters()
 
 
 @app.get("/api/datacenters/{dc_id}")
 def get_datacenter(dc_id: str):
-    if dc_id not in _state:
+    dc = state.get_datacenter(dc_id)
+    if dc is None:
         raise HTTPException(status_code=404, detail="Datacenter not found")
-    return _state[dc_id]
+    return dc
 
 
 @app.patch("/api/datacenters/{dc_id}/status")
 def update_status(dc_id: str, body: StatusUpdate):
-    if dc_id not in _state:
+    dc = state.get_datacenter(dc_id)
+    if dc is None:
         raise HTTPException(status_code=404, detail="Datacenter not found")
     if body.status not in ("online", "degraded", "offline"):
         raise HTTPException(status_code=400, detail="status must be online, degraded, or offline")
 
-    _state[dc_id]["status"] = body.status
-
     if body.status == "online":
-        _state[dc_id]["capacity_pct"] = _state[dc_id]["base_capacity_pct"]
-        _state[dc_id]["workload_count"] = _state[dc_id]["base_workload_count"]
-        _restore_load()          # stabilise any hubs that were absorbing extra load
+        state.set_datacenter_fields(dc_id,
+                                    status="online",
+                                    capacity_pct=dc["base_capacity_pct"],
+                                    workload_count=dc["base_workload_count"])
+        _restore_load()
     elif body.status == "degraded":
-        _state[dc_id]["capacity_pct"] = min(95, _state[dc_id]["base_capacity_pct"] + 15)
+        state.set_datacenter_fields(dc_id,
+                                    status="degraded",
+                                    capacity_pct=min(95, dc["base_capacity_pct"] + 15))
     elif body.status == "offline":
-        _state[dc_id]["capacity_pct"] = 0
-        _state[dc_id]["workload_count"] = 0
-        _distribute_load(dc_id)  # cascade load to remaining online major hubs
+        state.set_datacenter_fields(dc_id,
+                                    status="offline",
+                                    capacity_pct=0,
+                                    workload_count=0)
+        _distribute_load(dc_id)
 
-    return _state[dc_id]
+    return state.get_datacenter(dc_id)
 
 
 @app.post("/api/reset")
 def reset_all():
     """Reset all datacenters to their default state."""
-    _init_state()
-    return {"status": "reset", "datacenters": len(_state)}
+    state.reset_state()
+    return {"status": "reset", "datacenters": len(DATACENTERS)}
 
 
 # ── Health check demo endpoints ───────────────────────────────────────────────
