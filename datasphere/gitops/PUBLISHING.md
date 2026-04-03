@@ -16,7 +16,7 @@ oc create job gitea-content-init-manual --from=job/gitea-content-init -n gitea
 
 ## Building and pushing images
 
-Images live at `quay.io/rhpds/datasphere-ui` and `quay.io/rhpds/datasphere-api`.
+Images live at `quay.io/rhpds/datasphere-ui` and `quay.io/rhn_sa_sborenst/datasphere-api`.
 Both must target `linux/amd64` — the CNV cluster architecture.
 
 ### API image
@@ -25,8 +25,8 @@ The API is pure Python with no native build step, so cross-compilation works fin
 
 ```bash
 cd repos/ocp4-getting-started-automation
-podman build --platform linux/amd64 -t quay.io/rhpds/datasphere-api:1.1.0 datasphere/api/
-podman push quay.io/rhpds/datasphere-api:1.1.0
+podman build --platform linux/amd64 -t quay.io/rhn_sa_sborenst/datasphere-api:1.3.0 datasphere/api/
+podman push quay.io/rhn_sa_sborenst/datasphere-api:1.3.0
 ```
 
 ### UI image (Apple Silicon caveat)
@@ -77,7 +77,7 @@ Update the image tags in `datasphere/gitops/values.yaml` and commit to main. The
 
 | Change | Action needed |
 |--------|--------------|
-| `seed_data.py` or `main.py` change | Rebuild API image, bump tag in `values.yaml` |
+| `seed_data.py`, `main.py`, or `state.py` change | Rebuild API image, bump tag in `values.yaml` |
 | UI source change | Rebuild UI image (see Apple Silicon caveat above), bump tag in `values.yaml` |
 | Chart template change | Bump `version` in `Chart.yaml`; chart is re-pushed automatically at next provision |
 | Lab content only (adoc files) | No image or chart action needed |
