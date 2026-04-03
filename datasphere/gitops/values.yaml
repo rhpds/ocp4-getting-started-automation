@@ -7,7 +7,7 @@ images:
   # Pre-built UI image — pulled directly, never built in the workshop
   ui: quay.io/rhpds/datasphere-ui:1.1.3
   # API image — built from source via S2I in Lab 2, then referenced here
-  api: quay.io/rhn_sa_sborenst/datasphere-api:1.3.0
+  api: quay.io/rhn_sa_sborenst/datasphere-api:1.4.0
   redis: registry.redhat.io/rhel9/redis-7:latest
 
 # ── Replica counts ───────────────────────────────────────────────────────────
