@@ -22,16 +22,9 @@ spec:
           image: {{ .Values.images.ui }}
           ports:
             - containerPort: 8080
-          volumeMounts:
-            - name: nginx-proxy
-              mountPath: /opt/app-root/etc/nginx.default.d
           readinessProbe:
             httpGet:
               path: /
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
-      volumes:
-        - name: nginx-proxy
-          configMap:
-            name: datasphere-nginx
