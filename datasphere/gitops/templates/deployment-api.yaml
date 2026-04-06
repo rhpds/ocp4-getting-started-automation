@@ -24,9 +24,12 @@ spec:
       containers:
         - name: api
           image: {{ .Values.images.api }}
-          {{- with .Values.api.resources }}
+          {{- if .Values.api.resources.enabled }}
           resources:
-            {{- toYaml . | nindent 12 }}
+            requests:
+              {{- toYaml .Values.api.resources.requests | nindent 14 }}
+            limits:
+              {{- toYaml .Values.api.resources.limits | nindent 14 }}
           {{- end }}
           ports:
             - containerPort: 8080
@@ -38,6 +41,7 @@ spec:
           volumeMounts:
             - name: theme-config
               mountPath: /etc/datasphere
+          {{- if .Values.api.probes.enabled }}
           livenessProbe:
             httpGet:
               path: /health
@@ -51,6 +55,7 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
+          {{- end }}
       volumes:
         - name: theme-config
           configMap:

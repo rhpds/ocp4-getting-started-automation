@@ -23,6 +23,8 @@ spec:
         theme: {{ .Values.labs.datasphere.theme | quote }}
         api:
           replicas: {{ .Values.labs.datasphere.api.replicas }}
+          probes:
+            {{- .Values.labs.datasphere.api.probes | toYaml | nindent 12 }}
           resources:
             {{- .Values.labs.datasphere.api.resources | toYaml | nindent 12 }}
           hpa:

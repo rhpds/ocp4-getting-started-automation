@@ -10,10 +10,17 @@ images:
   api: quay.io/rhn_sa_sborenst/datasphere-api:1.4.3
   redis: registry.redhat.io/rhel9/redis-7:latest
 
-# ── Replica counts ───────────────────────────────────────────────────────────
+# ── API deployment settings ──────────────────────────────────────────────────
 api:
   replicas: 1
+
+  # Toggle resilience features on/off.
+  # Lab 3 "Build It Yourself" uses --set to disable these so students can
+  # add them manually via oc commands.
+  probes:
+    enabled: true
   resources:
+    enabled: true
     requests:
       cpu: 25m
       memory: 64Mi
@@ -21,6 +28,7 @@ api:
       cpu: 100m
       memory: 128Mi
   hpa:
+    enabled: true
     minReplicas: 1
     maxReplicas: 5
     targetCPUUtilizationPercentage: 50
