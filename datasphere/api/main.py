@@ -43,7 +43,7 @@ async def lifespan(app):
     await task
 
 
-app = FastAPI(title="DataSphere API", version="1.4.2", lifespan=lifespan)
+app = FastAPI(title="DataSphere API", version="1.4.3", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -236,6 +236,7 @@ def get_load():
         "total_load": total_load,
         "replica_count": replica_count,
         "per_pod_load": per_pod,
+        "api_version": app.version,
     }
 
 

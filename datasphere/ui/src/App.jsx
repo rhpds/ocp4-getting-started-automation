@@ -6,6 +6,9 @@ import DatacenterPanel from './components/DatacenterPanel'
 import StatusBar from './components/StatusBar'
 import LoadControlPanel from './components/LoadControlPanel'
 
+import pkg from '../package.json'
+
+const UI_VERSION = pkg.version
 const POLL_INTERVAL_MS = 3000
 const CONFIG_POLL_INTERVAL_MS = 10000
 
@@ -130,6 +133,19 @@ export default function App() {
             onToggleStatus={handleToggleStatus}
           />
         )}
+      </div>
+
+      <div style={{
+        position: 'fixed',
+        bottom: 4,
+        right: 8,
+        fontSize: 9,
+        color: theme.textSecondary,
+        opacity: 0.35,
+        fontFamily: 'Red Hat Mono, monospace',
+        pointerEvents: 'none',
+      }}>
+        ui {UI_VERSION} &middot; api {loadStats?.api_version ?? '...'}
       </div>
     </div>
   )
