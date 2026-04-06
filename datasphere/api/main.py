@@ -129,7 +129,7 @@ def _simulate_load() -> None:
     """Burn CPU based on combined simulated + offline-penalty load, divided by replicas."""
     simulated = state.get_simulated_load()
     offline_penalty = state.count_offline_majors() * 15
-    total_load = min(100, simulated + offline_penalty)
+    total_load = simulated + offline_penalty
     if total_load == 0:
         return
     replica_count = state.get_replica_count()
@@ -227,7 +227,7 @@ def get_load():
     """Return current load breakdown."""
     simulated = state.get_simulated_load()
     offline_penalty = state.count_offline_majors() * 15
-    total_load = min(100, simulated + offline_penalty)
+    total_load = simulated + offline_penalty
     replica_count = state.get_replica_count()
     per_pod = round(total_load / replica_count, 1)
     return {
