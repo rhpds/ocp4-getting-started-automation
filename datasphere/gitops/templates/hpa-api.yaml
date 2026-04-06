@@ -12,6 +12,9 @@ spec:
     name: datasphere-api
   minReplicas: {{ .Values.api.hpa.minReplicas }}
   maxReplicas: {{ .Values.api.hpa.maxReplicas }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 20
   metrics:
     - type: Resource
       resource:
