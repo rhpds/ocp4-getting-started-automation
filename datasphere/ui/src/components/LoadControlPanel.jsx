@@ -3,16 +3,20 @@ import { useState, useEffect, useRef } from 'react'
 export default function LoadControlPanel({ theme, loadStats }) {
   const [sliderValue, setSliderValue] = useState(0)
   const debounceRef = useRef(null)
+  const hasInteracted = useRef(false)
 
-  // Sync slider to server state when loadStats arrives
+  // Sync slider from server on initial load only — once the user has touched
+  // the slider, they own it. Without this guard the poll (every 3s) races
+  // against the debounced POST and snaps the slider back to the old value.
   useEffect(() => {
-    if (loadStats && sliderValue === 0 && loadStats.simulated_load > 0) {
+    if (!hasInteracted.current && loadStats && loadStats.simulated_load > 0) {
       setSliderValue(loadStats.simulated_load)
     }
-  }, [loadStats]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadStats])
 
   const handleChange = (e) => {
     const val = Number(e.target.value)
+    hasInteracted.current = true
     setSliderValue(val)
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
