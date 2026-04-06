@@ -21,10 +21,9 @@ COPY --from=build /opt/app-root/src/dist /opt/app-root/src
 # Startup script: generates the nginx proxy config at container start using the
 # in-cluster DNS resolver. Works with any deployment method (oc new-app, Helm)
 # without requiring an init container.
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY docker-entrypoint.sh /opt/app-root/docker-entrypoint.sh
 
-# UBI nginx runs as uid 1001 — no chmod hacks needed
+# UBI nginx runs as uid 1001 — /opt/app-root is writable by that user
 EXPOSE 8080
 
-CMD ["docker-entrypoint.sh"]
+CMD ["/opt/app-root/docker-entrypoint.sh"]
