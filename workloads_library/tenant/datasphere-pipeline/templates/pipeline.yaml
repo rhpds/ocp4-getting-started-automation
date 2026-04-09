@@ -27,8 +27,14 @@ spec:
     # ── 1. Clone source from Gitea ─────────────────────────────────────────
     - name: git-clone
       taskRef:
-        kind: ClusterTask
-        name: git-clone
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: namespace
+            value: openshift-pipelines
       params:
         - name: url
           value: $(params.APP_GIT_URL)
@@ -43,8 +49,14 @@ spec:
     # ── 2. Build container image from Dockerfile using Buildah ────────────
     - name: build-image
       taskRef:
-        kind: ClusterTask
-        name: buildah
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: buildah
+          - name: namespace
+            value: openshift-pipelines
       params:
         - name: IMAGE
           value: $(params.IMAGE)
@@ -67,8 +79,14 @@ spec:
     # ── 3. Update the running deployment to the new image ────────────────
     - name: deploy
       taskRef:
-        kind: ClusterTask
-        name: openshift-client
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: openshift-client
+          - name: namespace
+            value: openshift-pipelines
       params:
         - name: SCRIPT
           value: >-

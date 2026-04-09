@@ -42,6 +42,60 @@ subjects:
     name: datasphere-pipeline
     namespace: {{ .Values.datasphere.namespace }}
 ---
+# Allow EventListener SA to watch Tekton Triggers resources (required by the EventListener pod)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: datasphere-pipeline-triggers-watcher
+  namespace: {{ .Values.datasphere.namespace }}
+rules:
+  - apiGroups: ["triggers.tekton.dev"]
+    resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns"]
+    verbs: ["create", "get", "list"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelines"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: datasphere-pipeline-triggers-watcher
+  namespace: {{ .Values.datasphere.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: datasphere-pipeline-triggers-watcher
+subjects:
+  - kind: ServiceAccount
+    name: datasphere-pipeline
+    namespace: {{ .Values.datasphere.namespace }}
+---
+# ClusterInterceptors are cluster-scoped — needs a ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: datasphere-pipeline-{{ .Values.datasphere.namespace }}-interceptors
+rules:
+  - apiGroups: ["triggers.tekton.dev"]
+    resources: ["clusterinterceptors"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: datasphere-pipeline-{{ .Values.datasphere.namespace }}-interceptors
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: datasphere-pipeline-{{ .Values.datasphere.namespace }}-interceptors
+subjects:
+  - kind: ServiceAccount
+    name: datasphere-pipeline
+    namespace: {{ .Values.datasphere.namespace }}
+---
 # Allow webhook-config job to read Gitea CR for admin credentials
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

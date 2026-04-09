@@ -1,26 +1,71 @@
 ---
-# Runs once at provision time to build the initial API image from the student's Gitea repo.
-# Fixed name (not generateName) so ArgoCD does not re-create it on subsequent syncs.
-# Prune=false prevents ArgoCD from deleting it after it completes.
-apiVersion: tekton.dev/v1
-kind: PipelineRun
+# PostSync Job: creates the initial PipelineRun to build the API from the student's Gitea repo.
+# Uses a Job (not a PipelineRun resource directly) because ArgoCD globally excludes
+# tekton.dev/PipelineRun resources from management.
+# Idempotent: skips if datasphere-api-initial-build already exists.
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: datasphere-api-initial-build
+  name: datasphere-pipeline-initial-run
   namespace: {{ .Values.datasphere.namespace }}
   annotations:
-    argocd.argoproj.io/sync-options: "Prune=false"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "3"
 spec:
-  serviceAccountName: datasphere-pipeline
-  pipelineRef:
-    name: datasphere-api-pipeline
-  params:
-    - name: APP_GIT_URL
-      value: https://gitea.{{ .Values.deployer.domain }}/{{ .Values.tenant.user.name }}/datasphere-api
-    - name: APP_GIT_REVISION
-      value: main
-    - name: IMAGE
-      value: image-registry.openshift-image-registry.svc:5000/{{ .Values.datasphere.namespace }}/datasphere-api:latest
-  workspaces:
-    - name: source
-      persistentVolumeClaim:
-        claimName: datasphere-pipeline-workspace
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: datasphere-pipeline
+      restartPolicy: OnFailure
+      containers:
+        - name: trigger-build
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              NS="{{ .Values.datasphere.namespace }}"
+              GIT_URL="https://gitea.{{ .Values.deployer.domain }}/{{ .Values.tenant.user.name }}/datasphere-api"
+              IMAGE="image-registry.openshift-image-registry.svc:5000/${NS}/datasphere-api:latest"
+
+              # Idempotent: skip if initial build already ran
+              if oc get pipelinerun datasphere-api-initial-build -n "${NS}" 2>/dev/null; then
+                echo "Initial build already exists — skipping."
+                exit 0
+              fi
+
+              # Wait for the Pipeline to be available (up to 2 minutes)
+              echo "Waiting for Pipeline to be ready..."
+              for i in $(seq 1 24); do
+                if oc get pipeline datasphere-api-pipeline -n "${NS}" 2>/dev/null; then
+                  break
+                fi
+                sleep 5
+              done
+
+              # Create the initial PipelineRun with a fixed name
+              oc create -f - <<EOF
+              apiVersion: tekton.dev/v1
+              kind: PipelineRun
+              metadata:
+                name: datasphere-api-initial-build
+                namespace: ${NS}
+              spec:
+                serviceAccountName: datasphere-pipeline
+                pipelineRef:
+                  name: datasphere-api-pipeline
+                params:
+                  - name: APP_GIT_URL
+                    value: "${GIT_URL}"
+                  - name: APP_GIT_REVISION
+                    value: main
+                  - name: IMAGE
+                    value: "${IMAGE}"
+                workspaces:
+                  - name: source
+                    persistentVolumeClaim:
+                      claimName: datasphere-pipeline-workspace
+              EOF
+              echo "PipelineRun created."
