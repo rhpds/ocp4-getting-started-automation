@@ -50,7 +50,7 @@ metadata:
   namespace: {{ .Values.datasphere.namespace }}
 rules:
   - apiGroups: ["triggers.tekton.dev"]
-    resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
+    resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers", "interceptors"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns"]
