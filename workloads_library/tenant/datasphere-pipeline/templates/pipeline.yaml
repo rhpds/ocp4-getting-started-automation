@@ -1,7 +1,9 @@
+---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: datasphere-api-pipeline
+  namespace: {{ .Values.datasphere.namespace }}
 spec:
   params:
     - name: APP_NAME
@@ -10,14 +12,13 @@ spec:
     - name: APP_GIT_URL
       type: string
       description: Gitea URL for the datasphere-api repository
-      # This default is overridden at runtime with the student's Gitea URL
-      default: https://gitea.apps.cluster.example.com/userX/datasphere-api.git
+      default: https://gitea.{{ .Values.deployer.domain }}/{{ .Values.tenant.user.name }}/datasphere-api
     - name: APP_GIT_REVISION
       type: string
       default: main
     - name: IMAGE
       type: string
-      default: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/datasphere-api:latest
+      default: image-registry.openshift-image-registry.svc:5000/{{ .Values.datasphere.namespace }}/datasphere-api:latest
 
   workspaces:
     - name: source
@@ -74,6 +75,6 @@ spec:
             oc set image
             deployment/$(params.APP_NAME)
             $(params.APP_NAME)=$(params.IMAGE)
-            -n $(context.pipelineRun.namespace)
+            -n {{ .Values.datasphere.namespace }}
       runAfter:
         - build-image

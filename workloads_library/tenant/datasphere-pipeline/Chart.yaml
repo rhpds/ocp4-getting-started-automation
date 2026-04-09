@@ -1,0 +1,5 @@
+apiVersion: v2
+name: datasphere-pipeline
+description: Tekton pipeline for building and deploying the DataSphere API from Gitea
+type: application
+version: 1.0.0

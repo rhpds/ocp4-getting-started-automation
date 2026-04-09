@@ -102,3 +102,22 @@ labs:
         minReplicas: 1
         maxReplicas: 5
         targetCPUUtilizationPercentage: 50
+
+  # ---------------------------------------------------------------------------
+  # labs.dataspherePlugin — deploys the Tekton pipeline that builds the
+  # DataSphere API from the student's Gitea repo and configures the webhook.
+  # Must be enabled alongside labs.datasphere.
+  # namespace: must match labs.datasphere.namespace.
+  # ---------------------------------------------------------------------------
+  dataspherePlugin:
+    enabled: false
+    namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG
+    gitea:
+      namespace: gitea
+      crName: gitea
+    git:
+      path: workloads_library/tenant/datasphere-pipeline
+      <<: *git_defaults
+    pipeline:
+      pvc:
+        storageSize: 1Gi

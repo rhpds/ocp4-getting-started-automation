@@ -1,0 +1,16 @@
+---
+# Exposes the EventListener so Gitea can reach it via webhook
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: datasphere-pipeline-webhook
+  namespace: {{ .Values.datasphere.namespace }}
+spec:
+  to:
+    kind: Service
+    name: el-datasphere-api-pipeline
+  port:
+    targetPort: http-listener
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

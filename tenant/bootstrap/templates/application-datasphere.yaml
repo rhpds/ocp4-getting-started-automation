@@ -42,4 +42,13 @@ spec:
       selfHeal: false
       prune: false
 
+  # Tekton updates the API image after each pipeline run.
+  # Without this, ArgoCD would revert the image back to the quay.io default on next sync.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: datasphere-api
+      jsonPointers:
+        - /spec/template/spec/containers/0/image
+
 {{- end }}

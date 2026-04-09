@@ -1,0 +1,52 @@
+{{ if .Values.labs.dataspherePlugin.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: datasphere-pipeline-{{ .Values.tenant.user.name | lower }}
+  namespace: openshift-gitops
+  labels:
+    app: datasphere-pipeline
+    tenant: {{ .Values.tenant.name | lower }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: tenants
+  source:
+    repoURL: {{ .Values.labs.dataspherePlugin.git.repoURL }}
+    targetRevision: {{ .Values.labs.dataspherePlugin.git.targetRevision }}
+    path: {{ .Values.labs.dataspherePlugin.git.path }}
+    helm:
+      values: |
+        deployer:
+          domain: {{ .Values.deployer.domain | quote }}
+        tenant:
+          user:
+            name: {{ .Values.tenant.user.name | quote }}
+        gitea:
+          namespace: {{ .Values.labs.dataspherePlugin.gitea.namespace | quote }}
+          crName: {{ .Values.labs.dataspherePlugin.gitea.crName | quote }}
+        datasphere:
+          namespace: {{ .Values.labs.dataspherePlugin.namespace | quote }}
+        pipeline:
+          pvc:
+            storageSize: {{ .Values.labs.dataspherePlugin.pipeline.pvc.storageSize | quote }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.labs.dataspherePlugin.namespace }}
+
+  syncPolicy:
+    automated:
+      selfHeal: false
+      prune: false
+    syncOptions:
+      - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+{{- end }}

@@ -1,0 +1,18 @@
+deployer:
+  domain: apps.cluster-guid.example.com
+
+tenant:
+  user:
+    name: USERNAME
+
+gitea:
+  namespace: gitea
+  crName: gitea
+
+datasphere:
+  namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG
+
+pipeline:
+  pvc:
+    storageClass: ""
+    storageSize: 1Gi

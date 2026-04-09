@@ -1,0 +1,26 @@
+---
+# Runs once at provision time to build the initial API image from the student's Gitea repo.
+# Fixed name (not generateName) so ArgoCD does not re-create it on subsequent syncs.
+# Prune=false prevents ArgoCD from deleting it after it completes.
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: datasphere-api-initial-build
+  namespace: {{ .Values.datasphere.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: "Prune=false"
+spec:
+  serviceAccountName: datasphere-pipeline
+  pipelineRef:
+    name: datasphere-api-pipeline
+  params:
+    - name: APP_GIT_URL
+      value: https://gitea.{{ .Values.deployer.domain }}/{{ .Values.tenant.user.name }}/datasphere-api
+    - name: APP_GIT_REVISION
+      value: main
+    - name: IMAGE
+      value: image-registry.openshift-image-registry.svc:5000/{{ .Values.datasphere.namespace }}/datasphere-api:latest
+  workspaces:
+    - name: source
+      persistentVolumeClaim:
+        claimName: datasphere-pipeline-workspace

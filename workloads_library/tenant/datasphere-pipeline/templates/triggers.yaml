@@ -1,0 +1,61 @@
+---
+# TriggerBinding: extracts repo URL and revision from Gitea push webhook payload
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: datasphere-api-binding
+  namespace: {{ .Values.datasphere.namespace }}
+spec:
+  params:
+    - name: git-repo-url
+      value: $(body.repository.clone_url)
+    - name: git-revision
+      value: $(body.after)
+---
+# TriggerTemplate: creates a PipelineRun on each push
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: datasphere-api-template
+  namespace: {{ .Values.datasphere.namespace }}
+spec:
+  params:
+    - name: git-repo-url
+    - name: git-revision
+      default: main
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: datasphere-api-run-
+        namespace: {{ .Values.datasphere.namespace }}
+      spec:
+        serviceAccountName: datasphere-pipeline
+        pipelineRef:
+          name: datasphere-api-pipeline
+        params:
+          - name: APP_GIT_URL
+            value: $(tt.params.git-repo-url)
+          - name: APP_GIT_REVISION
+            value: $(tt.params.git-revision)
+          - name: IMAGE
+            value: image-registry.openshift-image-registry.svc:5000/{{ .Values.datasphere.namespace }}/datasphere-api:latest
+        workspaces:
+          - name: source
+            persistentVolumeClaim:
+              claimName: datasphere-pipeline-workspace
+---
+# EventListener: receives Gitea push webhooks
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: datasphere-api-pipeline
+  namespace: {{ .Values.datasphere.namespace }}
+spec:
+  serviceAccountName: datasphere-pipeline
+  triggers:
+    - name: gitea-push
+      bindings:
+        - ref: datasphere-api-binding
+      template:
+        ref: datasphere-api-template

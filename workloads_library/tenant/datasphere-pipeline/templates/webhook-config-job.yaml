@@ -1,0 +1,134 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datasphere-pipeline-webhook-config-scripts
+  namespace: {{ .Values.datasphere.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+data:
+  configure-webhook.py: |
+    #!/usr/bin/env python3
+    """
+    Waits for the EventListener Route to exist, then configures the Gitea webhook.
+    Idempotent: skips if a webhook pointing at the Route URL already exists.
+    """
+    import base64, json, os, sys, time, urllib.error, urllib.request
+
+    GITEA_NAMESPACE = os.environ["GITEA_NAMESPACE"]
+    GITEA_CR_NAME   = os.environ["GITEA_CR_NAME"]
+    GITEA_USER      = os.environ["GITEA_USER"]
+    DATASPHERE_NS   = os.environ["DATASPHERE_NS"]
+    ROUTE_NAME      = "datasphere-pipeline-webhook"
+
+    TOKEN  = open("/var/run/secrets/kubernetes.io/serviceaccount/token").read()
+    CACERT = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    API    = "https://kubernetes.default.svc"
+
+    def kube_get(path):
+        req = urllib.request.Request(
+            f"{API}{path}",
+            headers={"Authorization": f"Bearer {TOKEN}"})
+        with urllib.request.urlopen(req, cafile=CACERT) as r:
+            return json.loads(r.read())
+
+    # 1. Read Gitea CR for admin credentials
+    cr = kube_get(f"/apis/pfe.rhpds.com/v1/namespaces/{GITEA_NAMESPACE}/gitea/{GITEA_CR_NAME}")
+    GITEA_ADMIN_USER = cr["spec"]["giteaAdminUser"]
+    GITEA_ADMIN_PASS = cr["status"]["adminPassword"]
+    GITEA_ROUTE      = cr["status"]["giteaRoute"].rstrip("/")
+
+    _auth = base64.b64encode(f"{GITEA_ADMIN_USER}:{GITEA_ADMIN_PASS}".encode()).decode()
+
+    def gitea_req(method, path, data=None):
+        url = f"{GITEA_ROUTE}{path}"
+        headers = {"Authorization": f"Basic {_auth}"}
+        body = None
+        if data is not None:
+            body = json.dumps(data).encode()
+            headers["Content-Type"] = "application/json"
+        req = urllib.request.Request(url, data=body, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req) as r:
+                return r.status, json.loads(r.read() or b"{}")
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read() or b"{}")
+
+    # 2. Wait for the EventListener Route (up to 3 minutes)
+    print("Waiting for EventListener Route...")
+    webhook_url = None
+    for _ in range(36):
+        try:
+            route = kube_get(
+                f"/apis/route.openshift.io/v1/namespaces/{DATASPHERE_NS}/routes/{ROUTE_NAME}")
+            host = route["spec"]["host"]
+            webhook_url = f"https://{host}"
+            print(f"Route ready: {webhook_url}")
+            break
+        except Exception:
+            time.sleep(5)
+
+    if not webhook_url:
+        print("ERROR: EventListener Route not ready after 3 minutes", file=sys.stderr)
+        sys.exit(1)
+
+    # 3. Check if webhook already exists
+    status, hooks = gitea_req("GET", f"/api/v1/repos/{GITEA_USER}/datasphere-api/hooks")
+    if status == 200:
+        for hook in hooks:
+            if hook.get("config", {}).get("url") == webhook_url:
+                print(f"Webhook already configured: {webhook_url}")
+                sys.exit(0)
+
+    # 4. Create the webhook
+    status, body = gitea_req("POST", f"/api/v1/repos/{GITEA_USER}/datasphere-api/hooks", {
+        "type": "gitea",
+        "active": True,
+        "events": ["push"],
+        "config": {
+            "url": webhook_url,
+            "content_type": "json",
+        },
+    })
+    if status in (200, 201):
+        print(f"Webhook created: {webhook_url}")
+    else:
+        print(f"ERROR creating webhook: {status} {body}", file=sys.stderr)
+        sys.exit(1)
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: datasphere-pipeline-webhook-config
+  namespace: {{ .Values.datasphere.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: datasphere-pipeline
+      restartPolicy: OnFailure
+      containers:
+        - name: configure-webhook
+          image: registry.redhat.io/ubi9/python-312:latest
+          command: ["python3", "/scripts/configure-webhook.py"]
+          env:
+            - name: GITEA_NAMESPACE
+              value: {{ .Values.gitea.namespace | quote }}
+            - name: GITEA_CR_NAME
+              value: {{ .Values.gitea.crName | quote }}
+            - name: GITEA_USER
+              value: {{ .Values.tenant.user.name | quote }}
+            - name: DATASPHERE_NS
+              value: {{ .Values.datasphere.namespace | quote }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: datasphere-pipeline-webhook-config-scripts
+            defaultMode: 0755

@@ -1,0 +1,68 @@
+---
+# Allow SA to push images to the internal registry
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: datasphere-pipeline-image-pusher
+  namespace: {{ .Values.datasphere.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-pusher
+subjects:
+  - kind: ServiceAccount
+    name: datasphere-pipeline
+    namespace: {{ .Values.datasphere.namespace }}
+---
+# Allow SA to patch Deployments (oc set image) and get Routes
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: datasphere-pipeline-deployer
+  namespace: {{ .Values.datasphere.namespace }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["route.openshift.io"]
+    resources: ["routes"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: datasphere-pipeline-deployer
+  namespace: {{ .Values.datasphere.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: datasphere-pipeline-deployer
+subjects:
+  - kind: ServiceAccount
+    name: datasphere-pipeline
+    namespace: {{ .Values.datasphere.namespace }}
+---
+# Allow webhook-config job to read Gitea CR for admin credentials
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: datasphere-pipeline-gitea-reader
+  namespace: {{ .Values.gitea.namespace }}
+rules:
+  - apiGroups: ["pfe.rhpds.com"]
+    resources: ["gitea"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: datasphere-pipeline-gitea-reader
+  namespace: {{ .Values.gitea.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: datasphere-pipeline-gitea-reader
+subjects:
+  - kind: ServiceAccount
+    name: datasphere-pipeline
+    namespace: {{ .Values.datasphere.namespace }}

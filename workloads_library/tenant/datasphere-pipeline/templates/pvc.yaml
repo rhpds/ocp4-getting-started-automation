@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: datasphere-pipeline-workspace
+  namespace: {{ .Values.datasphere.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pipeline.pvc.storageSize }}
+  {{- if .Values.pipeline.pvc.storageClass }}
+  storageClassName: {{ .Values.pipeline.pvc.storageClass }}
+  {{- end }}
