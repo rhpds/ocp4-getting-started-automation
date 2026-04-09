@@ -91,7 +91,7 @@ spec:
           value: >-
             oc set image
             deployment/$(params.APP_NAME)
-            $(params.APP_NAME)=$(params.IMAGE)
+            api=$(params.IMAGE)
             -n $(context.pipelineRun.namespace)
       runAfter:
         - build-image
