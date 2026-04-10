@@ -14,5 +14,8 @@ datasphere:
 
 pipeline:
   pvc:
-    storageClass: ""
+    # Use an Immediate-binding storage class so ArgoCD can confirm PVC health before PostSync hooks run.
+    # ocs-external-storagecluster-cephfs binds immediately; the default RBD class uses WaitForFirstConsumer
+    # which deadlocks with ArgoCD's health check.
+    storageClass: "ocs-external-storagecluster-cephfs"
     storageSize: 1Gi

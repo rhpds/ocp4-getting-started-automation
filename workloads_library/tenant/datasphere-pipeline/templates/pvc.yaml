@@ -10,6 +10,4 @@ spec:
   resources:
     requests:
       storage: {{ .Values.pipeline.pvc.storageSize }}
-  {{- if .Values.pipeline.pvc.storageClass }}
-  storageClassName: {{ .Values.pipeline.pvc.storageClass }}
-  {{- end }}
+  storageClassName: {{ .Values.pipeline.pvc.storageClass | default "ocs-external-storagecluster-cephfs" }}
