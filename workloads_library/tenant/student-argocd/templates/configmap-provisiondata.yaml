@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitops-provisiondata
+  namespace: {{ .Values.namespace }}
+  labels:
+    # Picked up by the RHDP deployer and surfaced in the student's connection details.
+    demo.redhat.com/tenant-{{ .Values.tenant.user.name }}: "true"
+data:
+  # ArgoCD Route hostname — pattern: argocd-server-<namespace>.apps.<domain>
+  # Verify this pattern on a real cluster; the OpenShift GitOps operator
+  # generates the Route name from the ArgoCD instance name ("argocd") and namespace.
+  argocd_url: https://argocd-server-{{ .Values.namespace }}.apps.{{ .Values.deployer.domain }}

@@ -9,6 +9,7 @@ The ``_api_broken`` health flag is intentionally kept per-pod (in-memory)
 so the health-probe lab can break one pod without affecting others.
 """
 
+import json
 import logging
 import os
 from typing import Optional
@@ -18,6 +19,33 @@ import redis as redis_lib
 from seed_data import DATACENTERS
 
 logger = logging.getLogger("datasphere.state")
+
+# ── Extra datacenters (injected via ConfigMap / Helm values) ────────────────
+_EXTRA_DC_PATH = os.getenv("DATASPHERE_EXTRA_DC_PATH", "/etc/datasphere/extra_datacenters.json")
+
+
+def _load_extra_datacenters() -> list:
+    """Load extra datacenters from the ConfigMap-mounted JSON file.
+
+    Returns an empty list if the file is missing, empty, or unparseable.
+    This allows the API to start cleanly when no extra datacenters are configured.
+    """
+    try:
+        with open(_EXTRA_DC_PATH) as f:
+            data = json.load(f)
+        if isinstance(data, list) and data:
+            logger.info("Loaded %d extra datacenter(s) from %s", len(data), _EXTRA_DC_PATH)
+            return data
+    except FileNotFoundError:
+        pass  # Normal when no extras are configured
+    except Exception as exc:
+        logger.warning("Could not load extra datacenters from %s: %s", _EXTRA_DC_PATH, exc)
+    return []
+
+
+# Union of seed data and any operator-configured extras.
+# Used everywhere DATACENTERS was previously referenced directly.
+ALL_DATACENTERS = DATACENTERS + _load_extra_datacenters()
 
 # ── Redis connection ────────────────────────────────────────────────────────
 REDIS_URL = os.getenv("REDIS_URL", "")
@@ -50,7 +78,7 @@ def _dc_key(dc_id: str) -> str:
 def _seed_defaults() -> dict[str, dict]:
     """Build the default state dict from seed data."""
     result = {}
-    for dc in DATACENTERS:
+    for dc in ALL_DATACENTERS:
         result[dc["id"]] = {
             **dc,
             "status": "online",
@@ -91,7 +119,7 @@ def get_all_datacenters() -> list[dict]:
     """Return all datacenters with current state merged onto seed data."""
     if _use_redis:
         result = []
-        for dc in DATACENTERS:
+        for dc in ALL_DATACENTERS:
             dc_id = dc["id"]
             stored = _redis.hgetall(_dc_key(dc_id))
             if stored:
@@ -118,7 +146,7 @@ def get_datacenter(dc_id: str) -> Optional[dict]:
         if not stored:
             return None
         # Find the seed entry for static fields
-        seed = next((dc for dc in DATACENTERS if dc["id"] == dc_id), None)
+        seed = next((dc for dc in ALL_DATACENTERS if dc["id"] == dc_id), None)
         if not seed:
             return None
         return {
@@ -157,7 +185,7 @@ def count_offline_majors() -> int:
     """Count major hubs that are offline — used for CPU burn calculation."""
     if _use_redis:
         count = 0
-        for dc in DATACENTERS:
+        for dc in ALL_DATACENTERS:
             if dc["tier"] == "major":
                 status = _redis.hget(_dc_key(dc["id"]), "status")
                 if status == "offline":
@@ -174,7 +202,7 @@ def get_online_major_ids(exclude_id: str) -> list[str]:
     """Return IDs of online major hubs, excluding a given ID."""
     if _use_redis:
         result = []
-        for dc in DATACENTERS:
+        for dc in ALL_DATACENTERS:
             if dc["tier"] == "major" and dc["id"] != exclude_id:
                 status = _redis.hget(_dc_key(dc["id"]), "status")
                 if status != "offline":
@@ -192,7 +220,7 @@ def reset_state() -> None:
     global _simulated_load
     if _use_redis:
         pipe = _redis.pipeline()
-        for dc in DATACENTERS:
+        for dc in ALL_DATACENTERS:
             pipe.delete(_dc_key(dc["id"]))
         pipe.delete(_SEED_SENTINEL)
         pipe.delete(_SIMULATED_LOAD_KEY)

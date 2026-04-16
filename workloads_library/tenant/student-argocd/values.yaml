@@ -1,0 +1,14 @@
+deployer:
+  domain: apps.cluster-guid.example.com
+
+tenant:
+  user:
+    name: USERNAME
+
+# Namespace where the ArgoCD instance lives.
+namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG
+
+# Namespace the student deploys into during Lab 4.
+# Scoped here so the AppProject only allows this destination.
+gitopsLab:
+  namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG

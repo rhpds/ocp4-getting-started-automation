@@ -83,7 +83,7 @@ labs:
       <<: *git_defaults
     images:
       ui: quay.io/rhn_sa_sborenst/datasphere-ui:1.4.4
-      api: quay.io/rhn_sa_sborenst/datasphere-api:1.4.3
+      api: quay.io/rhn_sa_sborenst/datasphere-api:1.4.4
     theme: earth
     api:
       replicas: 1
@@ -121,3 +121,25 @@ labs:
     pipeline:
       pvc:
         storageSize: 1Gi
+
+  # ---------------------------------------------------------------------------
+  # labs.studentArgoCD — Lab 4 (GitOps). Deploys a per-student ArgoCD instance
+  # with OpenShift OAuth and registers the DataSphere Application so students
+  # can observe and interact with GitOps.
+  #
+  # IMPORTANT: When this is enabled, set labs.datasphere.enabled: false.
+  # The student ArgoCD takes over DataSphere management. Both cannot own the
+  # same resources simultaneously.
+  #
+  # namespace: the gitops namespace (user-{guid}-gitops). Must already exist
+  #   with argocd.argoproj.io/managed-by: <namespace> on the three app
+  #   namespaces (set via ocp4_workload_tenant_namespace_metadata).
+  # ---------------------------------------------------------------------------
+  studentArgoCD:
+    enabled: false
+    namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG  # user-{id}-gitops
+    gitopsLab:
+      namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG  # user-{id}-gitops-lab
+    git:
+      path: workloads_library/tenant/student-argocd
+      <<: *git_defaults

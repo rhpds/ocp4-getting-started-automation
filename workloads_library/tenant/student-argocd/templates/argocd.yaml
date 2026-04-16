@@ -1,0 +1,68 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: {{ .Values.namespace }}
+spec:
+  # OpenShift OAuth — student logs in with their existing OCP credentials.
+  # No separate ArgoCD password to provision or surface.
+  dex:
+    openShiftOAuth: true
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 50m
+        memory: 128Mi
+
+  # Grant the student user full admin access to this ArgoCD instance.
+  # The defaultPolicy denies everything else so other users cannot log in.
+  rbac:
+    defaultPolicy: 'role:none'
+    policy: |
+      g, {{ .Values.tenant.user.name }}, role:admin
+    scopes: '[groups]'
+
+  # Expose the ArgoCD UI via an OpenShift Route.
+  # Tuned-down resources — operator defaults are sized for production
+  # multi-app deployments (~1 CPU / ~2Gi RAM). These settings keep total
+  # ArgoCD requests at ~260m CPU / ~576Mi RAM, comfortable within the
+  # student's shared ClusterResourceQuota.
+  server:
+    route:
+      enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+  controller:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  repo:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  redis:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi

@@ -1,0 +1,46 @@
+{{ if .Values.labs.studentArgoCD.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: student-argocd-{{ .Values.tenant.user.name | lower }}
+  namespace: openshift-gitops
+  labels:
+    app: student-argocd
+    tenant: {{ .Values.tenant.name | lower }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: tenants
+  source:
+    repoURL: {{ .Values.labs.studentArgoCD.git.repoURL }}
+    targetRevision: {{ .Values.labs.studentArgoCD.git.targetRevision }}
+    path: {{ .Values.labs.studentArgoCD.git.path }}
+    helm:
+      values: |
+        deployer:
+          domain: {{ .Values.deployer.domain | quote }}
+        tenant:
+          user:
+            name: {{ .Values.tenant.user.name | quote }}
+        namespace: {{ .Values.labs.studentArgoCD.namespace | quote }}
+        gitopsLab:
+          namespace: {{ .Values.labs.studentArgoCD.gitopsLab.namespace | quote }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.labs.studentArgoCD.namespace }}
+
+  syncPolicy:
+    automated:
+      selfHeal: false
+      prune: false
+    syncOptions:
+      - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+{{- end }}

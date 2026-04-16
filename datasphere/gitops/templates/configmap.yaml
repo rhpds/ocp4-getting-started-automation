@@ -5,3 +5,5 @@ metadata:
 data:
   config.json: |
     {"theme": "{{ .Values.theme }}"}
+  extra_datacenters.json: |
+    {{ .Values.api.extraDatacenters | toJson }}

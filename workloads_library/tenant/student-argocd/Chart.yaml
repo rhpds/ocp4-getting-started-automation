@@ -1,0 +1,9 @@
+apiVersion: v2
+name: student-argocd
+description: >
+  Per-student ArgoCD instance for Lab 4 (GitOps). Deploys a namespace-scoped
+  ArgoCD instance with OpenShift OAuth, registers the student's Gitea datasphere
+  repo as the source, and creates the DataSphere Application so students can
+  observe and interact with GitOps in action.
+type: application
+version: 1.0.0
