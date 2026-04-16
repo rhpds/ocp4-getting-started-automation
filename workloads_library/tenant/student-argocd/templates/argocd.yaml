@@ -5,16 +5,17 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   # OpenShift OAuth — student logs in with their existing OCP credentials.
-  # No separate ArgoCD password to provision or surface.
-  dex:
-    openShiftOAuth: true
-    resources:
-      requests:
-        cpu: 10m
-        memory: 64Mi
-      limits:
-        cpu: 50m
-        memory: 128Mi
+  # Uses sso.dex schema required by OpenShift GitOps operator >= 1.10.
+  sso:
+    dex:
+      openShiftOAuth: true
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          cpu: 50m
+          memory: 128Mi
 
   # Grant the student user full admin access to this ArgoCD instance.
   # The defaultPolicy denies everything else so other users cannot log in.

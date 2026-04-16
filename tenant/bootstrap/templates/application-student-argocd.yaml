@@ -43,4 +43,22 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+
+  # The GitOps operator injects default fields into the ArgoCD CR after creation
+  # (grafana, ha, imageUpdater, monitoring, networkPolicy, notifications,
+  # prometheus, initialSSHKnownHosts, tls.ca). Ignore those to prevent
+  # perpetual OutOfSync on fields we don't manage.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: ArgoCD
+      jsonPointers:
+        - /spec/grafana
+        - /spec/ha
+        - /spec/imageUpdater
+        - /spec/initialSSHKnownHosts
+        - /spec/monitoring
+        - /spec/networkPolicy
+        - /spec/notifications
+        - /spec/prometheus
+        - /spec/tls
 {{- end }}
