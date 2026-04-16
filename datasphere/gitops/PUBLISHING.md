@@ -16,7 +16,7 @@ oc create job gitea-content-init-manual --from=job/gitea-content-init -n gitea
 
 ## Building and pushing images
 
-Images live at `quay.io/rhpds/datasphere-ui` and `quay.io/rhn_sa_sborenst/datasphere-api`.
+Images live at `quay.io/rhpds/datasphere-ui` and `quay.io/rhpds/datasphere-api`.
 Both must target `linux/amd64` — the CNV cluster architecture.
 
 ### API image
@@ -25,8 +25,8 @@ The API is pure Python with no native build step, so cross-compilation works fin
 
 ```bash
 cd repos/ocp4-getting-started-automation
-podman build --platform linux/amd64 -t quay.io/rhn_sa_sborenst/datasphere-api:1.3.0 datasphere/api/
-podman push quay.io/rhn_sa_sborenst/datasphere-api:1.3.0
+podman build --platform linux/amd64 -t quay.io/rhpds/datasphere-api:1.3.0 datasphere/api/
+podman push quay.io/rhpds/datasphere-api:1.3.0
 ```
 
 ### UI image (Apple Silicon caveat)
