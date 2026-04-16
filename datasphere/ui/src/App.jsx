@@ -35,16 +35,20 @@ export default function App() {
   // No dependency on selectedId — interval stays stable, close button works
   const fetchDatacenters = useCallback(async () => {
     try {
-      const [dcRes, loadRes] = await Promise.all([
-        axios.get('/api/datacenters'),
-        axios.get('/api/load'),
-      ])
+      const dcRes = await axios.get('/api/datacenters')
       setDatacenters(dcRes.data)
-      setLoadStats(loadRes.data)
       setLastUpdated(new Date())
       setApiError(false)
     } catch {
       setApiError(true)
+    }
+    // Load stats are optional (Lab 3 feature). Fetch independently so a
+    // 404 on older API versions never prevents the datacenter map from rendering.
+    try {
+      const loadRes = await axios.get('/api/load')
+      setLoadStats(loadRes.data)
+    } catch {
+      // Silently ignore — map still renders without load simulation data
     }
   }, [])
 
