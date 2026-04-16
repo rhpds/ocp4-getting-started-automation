@@ -100,12 +100,17 @@ data:
                     result[rel] = f.read()
         return result
 
-    # Create repos via Gitea Contents API
+    # Create (or recreate) repos via Gitea Contents API.
+    # Always delete and recreate so the admin repos stay in sync with the
+    # automation repo source — stale code from a previous provision is replaced.
     for repo_name, source_subdir in REPOS.items():
         status, _ = gitea_req("GET", f"/api/v1/repos/{GITEA_ADMIN_USER}/{repo_name}")
         if status == 200:
-            print(f"Repo {repo_name} already exists — skipping")
-            continue
+            print(f"Repo {repo_name} already exists — deleting and recreating...")
+            del_status, _ = gitea_req("DELETE", f"/api/v1/repos/{GITEA_ADMIN_USER}/{repo_name}")
+            if del_status not in (200, 204):
+                print(f"ERROR deleting repo {repo_name}: {del_status}", file=sys.stderr)
+                sys.exit(1)
 
         print(f"Creating {repo_name} from {source_subdir}...")
         status, body = gitea_req("POST", "/api/v1/user/repos", {
