@@ -6,7 +6,9 @@ metadata:
 spec:
   # OpenShift OAuth — student logs in with their existing OCP credentials.
   # Uses sso.dex schema required by OpenShift GitOps operator >= 1.10.
+  # provider: dex is required — operator rejects sso.dex without it.
   sso:
+    provider: dex
     dex:
       openShiftOAuth: true
       resources:
