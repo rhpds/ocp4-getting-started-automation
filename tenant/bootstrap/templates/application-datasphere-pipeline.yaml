@@ -36,9 +36,7 @@ spec:
     namespace: {{ .Values.labs.dataspherePlugin.namespace }}
 
   syncPolicy:
-    automated:
-      selfHeal: false
-      prune: false
+    automated: {}
     syncOptions:
       - CreateNamespace=false
       - SkipDryRunOnMissingResource=true

@@ -38,9 +38,7 @@ spec:
   # selfHeal: false ensures ArgoCD does NOT revert student changes
   # (scaling replicas, deleting pods, etc.) during Lab 3.
   syncPolicy:
-    automated:
-      selfHeal: false
-      prune: false
+    automated: {}
 
   # Tekton updates the API image after each pipeline run.
   # Without this, ArgoCD would revert the image back to the quay.io default on next sync.

@@ -31,9 +31,7 @@ spec:
     namespace: {{ .Values.labs.studentArgoCD.namespace }}
 
   syncPolicy:
-    automated:
-      selfHeal: false
-      prune: false
+    automated: {}
     syncOptions:
       - CreateNamespace=false
       - SkipDryRunOnMissingResource=true
