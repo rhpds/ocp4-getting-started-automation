@@ -6,7 +6,7 @@ metadata:
 spec:
   description: Lab 4 GitOps workspace
   sourceRepos:
-    - 'https://gitea.{{ .Values.deployer.domain }}/*'
+    - 'https://gitea.{{ .Values.deployer.domain }}/**'
   destinations:
     - namespace: {{ .Values.gitopsLab.namespace }}
       server: https://kubernetes.default.svc
