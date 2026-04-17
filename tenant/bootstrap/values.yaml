@@ -83,7 +83,7 @@ labs:
       <<: *git_defaults
     images:
       ui: quay.io/rhpds/datasphere-ui:1.4.5
-      api: quay.io/rhpds/datasphere-api:1.4.4
+      api: quay.io/rhpds/datasphere-api:1.4.5
     theme: earth
     api:
       replicas: 1
