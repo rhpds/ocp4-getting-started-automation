@@ -10,4 +10,4 @@ data:
   # ArgoCD Route hostname — pattern: argocd-server-<namespace>.apps.<domain>
   # Verify this pattern on a real cluster; the OpenShift GitOps operator
   # generates the Route name from the ArgoCD instance name ("argocd") and namespace.
-  argocd_url: https://argocd-server-{{ .Values.namespace }}.apps.{{ .Values.deployer.domain }}
+  argocd_url: https://argocd-server-{{ .Values.namespace }}.{{ .Values.deployer.domain }}
