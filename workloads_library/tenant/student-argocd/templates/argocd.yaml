@@ -27,6 +27,13 @@ spec:
       g, {{ .Values.tenant.user.name }}, role:admin
     scopes: '[groups]'
 
+  # Namespaces this ArgoCD instance is allowed to manage.
+  # The GitOps operator creates the necessary RoleBindings in each namespace
+  # based on this list. The namespaces must also carry the
+  # argocd.argoproj.io/managed-by: <this-namespace> annotation.
+  sourceNamespaces:
+    - {{ .Values.gitopsLab.namespace }}
+
   # Expose the ArgoCD UI via an OpenShift Route.
   # Tuned-down resources — operator defaults are sized for production
   # multi-app deployments (~1 CPU / ~2Gi RAM). These settings keep total
