@@ -32,7 +32,7 @@ spec:
   # based on this list. The namespaces must also carry the
   # argocd.argoproj.io/managed-by: <this-namespace> annotation.
   sourceNamespaces:
-    - {{ .Values.gitopsLab.namespace }}
+    - {{ .Values.namespace }}
 
   # Expose the ArgoCD UI via an OpenShift Route.
   # Tuned-down resources — operator defaults are sized for production

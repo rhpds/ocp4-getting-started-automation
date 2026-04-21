@@ -8,7 +8,7 @@ spec:
   sourceRepos:
     - 'https://gitea.{{ .Values.deployer.domain }}/**'
   destinations:
-    - namespace: {{ .Values.gitopsLab.namespace }}
+    - namespace: {{ .Values.namespace }}
       server: https://kubernetes.default.svc
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:

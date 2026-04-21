@@ -23,8 +23,6 @@ spec:
           user:
             name: {{ .Values.tenant.user.name | quote }}
         namespace: {{ .Values.labs.studentArgoCD.namespace | quote }}
-        gitopsLab:
-          namespace: {{ .Values.labs.studentArgoCD.gitopsLab.namespace | quote }}
 
   destination:
     server: https://kubernetes.default.svc

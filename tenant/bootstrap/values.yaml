@@ -131,15 +131,14 @@ labs:
   # The student ArgoCD takes over DataSphere management. Both cannot own the
   # same resources simultaneously.
   #
-  # namespace: the gitops namespace (user-{guid}-gitops). Must already exist
-  #   with argocd.argoproj.io/managed-by: <namespace> on the three app
-  #   namespaces (set via ocp4_workload_tenant_namespace_metadata).
+  # namespace: the gitops namespace (user-{guid}-gitops). ArgoCD runs here and
+  #   students deploy their Application resources into this same namespace.
+  #   Must already exist with argocd.argoproj.io/managed-by: <namespace> set
+  #   (via ocp4_workload_tenant_namespace_metadata).
   # ---------------------------------------------------------------------------
   studentArgoCD:
     enabled: false
     namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG  # user-{id}-gitops
-    gitopsLab:
-      namespace: NAMESPACE-MUST-BE-SET-BY-CATALOG  # user-{id}-gitops-lab
     git:
       path: workloads_library/tenant/student-argocd
       <<: *git_defaults
