@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 30" role="img" aria-label="Red Hat">
+  <!-- Hat brim -->
+  <ellipse cx="28" cy="22" rx="22" ry="5" fill="#EE0000"/>
+  <!-- Hat body -->
+  <path d="M14 22 Q15 8 28 6 Q41 8 42 22 Z" fill="#EE0000"/>
+  <!-- Hat band highlight -->
+  <path d="M17 19 Q28 16 39 19" stroke="#CC0000" stroke-width="2" fill="none"/>
+  <!-- Wordmark -->
+  <text x="58" y="22" font-family="Overpass,Liberation Sans,Arial,sans-serif" font-weight="700" font-size="18" fill="#151515" letter-spacing="-0.3">Red Hat</text>
+</svg>
