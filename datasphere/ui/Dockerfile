@@ -18,6 +18,12 @@ FROM registry.access.redhat.com/ubi9/nginx-122:latest
 # Copy built assets to /opt/app-root/src — the UBI nginx-122 default serve root.
 COPY --from=build /opt/app-root/src/dist /opt/app-root/src
 
+# Redirect nginx logs to stdout/stderr so `oc logs` works.
+USER root
+RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
+    ln -sf /dev/stderr /var/log/nginx/error.log
+USER 1001
+
 # Startup script: generates the nginx proxy config at container start using the
 # in-cluster DNS resolver. Works with any deployment method (oc new-app, Helm)
 # without requiring an init container.
