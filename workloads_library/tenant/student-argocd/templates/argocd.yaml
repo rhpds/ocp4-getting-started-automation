@@ -25,7 +25,7 @@ spec:
     defaultPolicy: 'role:none'
     policy: |
       g, {{ .Values.tenant.user.name }}, role:admin
-    scopes: '[groups]'
+    scopes: '[groups, preferred_username, email]'
 
   # Namespaces this ArgoCD instance is allowed to manage.
   # The GitOps operator creates the necessary RoleBindings in each namespace
